@@ -6,6 +6,14 @@ import random
 import time
 from dotenv import load_dotenv
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -26,7 +34,7 @@ def update_coils():
     while True:
         values = [random.choice([0, 1]) for _ in range(6)]  # Generate random True/False values
         store.setValues(1, 0, values)  # Update coil values (Function Code 1)
-        print(f"Updated Coils: {values}")
+        logger.debug(f"Updated Coils: {values}")
         time.sleep(10)  # Wait 10 seconds before next update
 
 # Function to Randomly Update Holding Registers Every 1 Second
@@ -45,25 +53,27 @@ def update_holding_registers():
             random.randint(90, 100)    # IT
         ]
         store.setValues(3, 0, values)  # Update holding registers (Function Code 3)
-        print(f"Updated Holding Registers: {values}")
+        logger.debug(f"Updated Holding Registers: {values}")
         time.sleep(1)  # Wait 1 second before next update
 
 # Start the MODBUS Server in a Separate Thread
-print("Starting MODBUS TCP Server....")
-server_thread = threading.Thread(target=StartTcpServer, args=(context,), kwargs={"address": ("127.0.0.1", 5020)}, daemon=True)
+logger.info(f"Starting MODBUS TCP Server on {host}:{port}")
+server_thread = threading.Thread(target=StartTcpServer, args=(context,), kwargs={"address": (host, int(port))}, daemon=True)
 server_thread.start()
 
 # Start the Coil Updating Thread
 update_thread = threading.Thread(target=update_coils, daemon=True)
 update_thread.start()
+logger.info("Started coil update thread")
 
 # Start the Holding Register Updating Thread
 update_hr_thread = threading.Thread(target=update_holding_registers, daemon=True)
 update_hr_thread.start()
+logger.info("Started holding register update thread")
 
 # Keep the script running
 try:
     while True:
         time.sleep(1)
 except KeyboardInterrupt:
-    print("Shutting down MODBUS server.")
+    logger.info("Shutting down MODBUS server")

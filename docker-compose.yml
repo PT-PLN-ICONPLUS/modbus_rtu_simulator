@@ -1,5 +1,5 @@
 services:
-  modbus-server:
+  modbus_tcp_server_simulator:
     build: .
     container_name: modbus_tcp_server_simulator
     hostname: modbus_tcp_server_simulator
