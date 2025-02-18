@@ -1,0 +1,15 @@
+services:
+  modbus-server:
+    build: .
+    container_name: modbus_tcp_server_simulator
+    hostname: modbus_tcp_server_simulator
+    ports:
+      - "8001:8001"
+    networks:
+      - app-tier
+    env_file:
+      - .env
+
+networks:
+  app-tier:
+    external: true
