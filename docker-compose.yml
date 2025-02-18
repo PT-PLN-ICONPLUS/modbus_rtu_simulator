@@ -1,14 +1,44 @@
+version: '3.8'
+
 services:
-  modbus_tcp_server_simulator:
+  modbus_tcp_server_simulator_1:
     build: .
-    container_name: modbus_tcp_server_simulator
-    hostname: modbus_tcp_server_simulator
+    container_name: modbus_tcp_server_simulator_1
+    hostname: modbus_tcp_server_simulator_1
     ports:
       - "8001:8001"
     networks:
       - app-tier
     env_file:
       - .env
+    environment:
+      - PORT=8001
+
+  modbus_tcp_server_simulator_2:
+    build: .
+    container_name: modbus_tcp_server_simulator_2
+    hostname: modbus_tcp_server_simulator_2
+    ports:
+      - "8002:8002"
+    networks:
+      - app-tier
+    env_file:
+      - .env
+    environment:
+      - PORT=8002
+
+  modbus_tcp_server_simulator_3:
+    build: .
+    container_name: modbus_tcp_server_simulator_3
+    hostname: modbus_tcp_server_simulator_3
+    ports:
+      - "8003:8003"
+    networks:
+      - app-tier
+    env_file:
+      - .env
+    environment:
+      - PORT=8003
 
 networks:
   app-tier:
