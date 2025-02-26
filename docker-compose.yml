@@ -1,44 +1,74 @@
 version: '3.8'
 
 services:
-  modbus_tcp_server_simulator_1:
-    build: .
-    container_name: modbus_tcp_server_simulator_1
-    hostname: modbus_tcp_server_simulator_1
+  backend_modbus_tcp_server_simulator_1:
+    build: ./backend
+    container_name: backend_modbus_tcp_server_simulator_1
+    hostname: backend_modbus_tcp_server_simulator_1
     ports:
       - "8001:8001"
     networks:
       - app-tier
     env_file:
-      - .env
+      - ./backend/.env
     environment:
       - PORT=8001
 
-  modbus_tcp_server_simulator_2:
-    build: .
-    container_name: modbus_tcp_server_simulator_2
-    hostname: modbus_tcp_server_simulator_2
+  frontend_modbus_tcp_server_simulator_1:
+    build: ./frontend
+    container_name: frontend_modbus_tcp_server_simulator_1
+    ports:
+      - "3001:3001"
+    networks:
+      - app-tier
+    depends_on:
+      - backend_modbus_tcp_server_simulator_1
+
+  backend_modbus_tcp_server_simulator_2:
+    build: ./backend
+    container_name: backend_modbus_tcp_server_simulator_2
+    hostname: backend_modbus_tcp_server_simulator_2
     ports:
       - "8002:8002"
     networks:
       - app-tier
     env_file:
-      - .env
+      - ./backend/.env
     environment:
       - PORT=8002
 
-  modbus_tcp_server_simulator_3:
-    build: .
-    container_name: modbus_tcp_server_simulator_3
-    hostname: modbus_tcp_server_simulator_3
+  frontend_modbus_tcp_server_simulator_2:
+    build: ./frontend
+    container_name: frontend_modbus_tcp_server_simulator_2
+    ports:
+      - "3002:3002"
+    networks:
+      - app-tier
+    depends_on:
+      - backend_modbus_tcp_server_simulator_2
+
+  backend_modbus_tcp_server_simulator_3:
+    build: ./backend
+    container_name: backend_modbus_tcp_server_simulator_3
+    hostname: backend_modbus_tcp_server_simulator_3
     ports:
       - "8003:8003"
     networks:
       - app-tier
     env_file:
-      - .env
+      - ./backend/.env
     environment:
       - PORT=8003
+
+  frontend_modbus_tcp_server_simulator_3:
+    build: ./frontend
+    container_name: frontend_modbus_tcp_server_simulator_3
+    ports:
+      - "3003:3003"
+    networks:
+      - app-tier
+    depends_on:
+      - backend_modbus_tcp_server_simulator_3
 
 networks:
   app-tier:
