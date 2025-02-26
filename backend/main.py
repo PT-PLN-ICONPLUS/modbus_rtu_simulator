@@ -30,7 +30,6 @@ MODBUS_PORT = int(os.getenv("MODBUS_PORT"))
 
 app = FastAPI()
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
-socket_app = socketio.ASGIApp(sio, app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -110,6 +109,7 @@ async def lifespan(app: FastAPI):
 
 # Assign lifespan handler to app
 app = FastAPI(lifespan=lifespan)
+socket_app = socketio.ASGIApp(sio, app)
 
 # API endpoints
 @app.get("/")
@@ -117,4 +117,4 @@ async def root():
     return {"message": "Modbus TCP Server Simulator API"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host=FASTAPI_HOST, port=FASTAPI_PORT)
+    uvicorn.run(socket_app, host=FASTAPI_HOST, port=FASTAPI_PORT)

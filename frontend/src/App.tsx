@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { MantineProvider, Container, Paper, Title, Grid, Text } from '@mantine/core';
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:8001');
+const socket = io('http://localhost:7001');
 
 interface RegisterValues {
   VR: number;
