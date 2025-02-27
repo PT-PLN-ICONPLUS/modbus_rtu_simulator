@@ -11,7 +11,7 @@ This is only for TCP clients only!
 
 ## Addresses
 
-| Address | Type | Name | Interval (s) | Range
+| Address | Type | Name | Interval (s) | Range |
 
 | ------ | ------ | ------ | ------ | ------ |
 | 40001 | Holding Register | VR | 1 | 200-300 |
