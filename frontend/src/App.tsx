@@ -125,66 +125,179 @@ function App() {
     setNewCoilAddress(0);
   };
 
-  return (
-    <div className="min-w-screen mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold text-center mb-8">Modbus TCP Server Simulator</h1>
+  const [isOpen, setIsOpen] = useState(true);
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Holding Registers */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Holding Registers</h2>
-            <button className="bg-blue-500 text-white" onClick={() => setRegisterModalOpen(true)}>
-              Add Register
+  return (
+    <div className="min-w-screen">
+      <h1 className="text-3xl font-bold py-3 text-center">Modbus TCP Server Simulator</h1>
+
+      <div className="flex flex-row w-full">
+        {/* Circuit Breaker Section */}
+        <div className="w-1/3 border-2">
+          <div className="flex flex-row border-b-2">
+            <h2 className="text-xl font-semibold pl-7 pr-36 m-2">Circuit Breaker</h2>
+            <button
+              className="bg-blue-500 text-white p-2 rounded m-2"
+              onClick={() => setRegisterModalOpen(true)}
+            >
+              +
+            </button>
+            <button
+              className="bg-red-500 text-white p-2 rounded m-2"
+              onClick={() => setCoilModalOpen(true)}
+            >
+              -
             </button>
           </div>
-          <div className="space-y-4">
-            {Object.entries(registerConfigs).map(([name, config]) => (
-              <div key={name} className="flex justify-between items-center">
-                <div className="mr-4">
-                  <span className="font-medium">{name}</span>: {registerValues[name] || 0}{' '}
-                  <span className="text-sm text-gray-500">Range: {config.min_value}-{config.max_value}</span>{' '}
-                  <span className="text-sm text-gray-500">Interval: {config.interval}s</span>
+
+          <div className="flex flex-row gap-2">
+            <div className="flex flex-col">
+
+              <div className="flex flex-row">
+
+                <div className="flex w-full justify-around gap-3">
+                  <div className="flex flex-col items-center gap-4">
+                    <div
+                      className={`w-24 h-24 rounded-full border-2 border-green-400 ${isOpen ? 'bg-green-200' : 'bg-green-200 opacity-50'}`}
+                    ></div>
+                    <span className="text-2xl font-sans">Open</span>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-4">
+                    <div
+                      className={`w-24 h-24 rounded-full border-2 border-red-400 ${!isOpen ? 'bg-red-200' : 'bg-red-200 opacity-50'}`}
+                    ></div>
+                    <span className="text-2xl font-sans">Close</span>
+                  </div>
                 </div>
-                <button className="bg-red-500 text-white" onClick={() => handleDeleteRegister(name)}>
-                  Delete
+              </div>
+
+              <div className="flex flex-row gap-2 justify-around">
+                <button
+                  onClick={() => setIsOpen(true)}
+                  className={`w-12 h-12 rounded-full flex items-center justify-center ${isOpen ? 'bg-green-200 border-2 border-green-500' : 'bg-green-100 border-2 border-green-300'
+                    }`}
+                >
+                  Open
+                </button>
+
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className={`w-12 h-12 rounded-full flex items-center justify-center ${!isOpen ? 'bg-red-200 border-2 border-red-500' : 'bg-red-100 border-2 border-red-300'
+                    }`}
+                >
+                  Close
                 </button>
               </div>
-            ))}
+
+              <div className="flex flex-row gap-1">
+                <button className="bg-blue-500 text-sm text-white">Invalid 0</button>
+                <button className="bg-blue-500 text-sm text-white">Trip</button>
+                <button className="bg-blue-500 text-sm text-white">Invalid 3</button>
+
+              </div>
+            </div>
+
+            <div className="flex flex-col">
+              <text className="font-sm">IQA Data: 300</text>
+              <text className="font-sm">IQA Command: 6000</text>
+              <text className="font-sm">SBO: False</text>
+              <text className="font-sm">Type: Double Point Command</text>
+
+              <div className="flex flex-row">
+                <button className="bg-blue-500 text-white">SBO</button>
+                <button className="bg-blue-500 text-white">DP</button>
+              </div>
+
+              <div className="flex flex-row">
+                <text className="text-sm text-gray-500">Local</text>
+                <text className="text-sm text-gray-500">Remote</text>
+              </div>
+            </div>
+
           </div>
         </div>
 
-        {/* Coil Status */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Coil Status</h2>
-            <button className="bg-blue-500 text-white" onClick={() => setCoilModalOpen(true)}>
-              Add Coil
-            </button>
-          </div>
+        {/* Telesignal Section */}
+        <div className="p-6 w-1/3 border-2">
+          <h2 className="text-xl font-semibold mb-4">Telesignal</h2>
           <div className="space-y-4">
-            {Object.entries(coilConfigs).map(([name, config]) => (
-              <div key={name} className="flex justify-between items-center">
-                <div>
-                  <span className="font-medium">{name}</span>:{' '}
-                  <span className={`text-sm ${coilValues[name] ? 'text-green-600' : 'text-red-600'}`}>
-                    {coilValues[name] ? 'ON' : 'OFF'}
-                  </span>{' '}
-                  <span className="text-sm text-gray-500">Interval: {config.interval}s</span>
-                </div>
-                <button className="bg-red-500 text-white" onClick={() => handleDeleteCoil(name)}>
-                  Delete
-                </button>
+            <div className="flex justify-between items-center">
+              <div className="mr-4">
+                <span className="font-medium">Over Current Relay 1A</span>
               </div>
-            ))}
+              <div className="mr-4">
+                <span className="font-medium">IQA:</span> 117
+              </div>
+              <div className="mr-4">
+                <span className="font-medium">Type:</span> Single Point
+              </div>
+              <div className="mr-4">
+                <span className="font-medium">Status:</span> ON
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <div className="mr-4">
+                <span className="font-medium">Ground Fault Relay 2A</span>
+              </div>
+              <div className="mr-4">
+                <span className="font-medium">IOA:</span> 132
+              </div>
+              <div className="mr-4">
+                <span className="font-medium">Type:</span> Single Point
+              </div>
+              <div className="mr-4">
+                <span className="font-medium">Status:</span> OFF
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Telemetry Section */}
+        <div className="p-6 w-1/3 border-2">
+          <h2 className="text-xl font-semibold mb-4">Telemetry</h2>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="mr-4">
+                <span className="font-medium">Frekuensi</span>
+              </div>
+              <div className="mr-4">
+                <span className="font-medium">IQA:</span> 1080
+              </div>
+              <div className="mr-4">
+                <span className="font-medium">Value:</span> 400 F
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <div className="mr-4">
+                <span className="font-medium">Power Aktif</span>
+              </div>
+              <div className="mr-4">
+                <span className="font-medium">IQA:</span> 1081
+              </div>
+              <div className="mr-4">
+                <span className="font-medium">Value:</span> 5 P
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <div className="mr-4">
+                <span className="font-medium">Area Gangguan Phase A</span>
+              </div>
+              <div className="mr-4">
+                <span className="font-medium">IQA:</span> 1088
+              </div>
+              <div className="mr-4">
+                <span className="font-medium">Value:</span> 0.5 AMPF
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Add Register Modal */}
       {registerModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg w-96">
+        <div className="fixed inset-0 bg-white bg-opacity-50 flex items-center justify-center">
+          <div className="p-6 rounded-lg w-96">
             <h3 className="text-lg font-semibold mb-4">Add New Register</h3>
             <div className="space-y-4">
               <input
@@ -243,8 +356,8 @@ function App() {
 
       {/* Add Coil Modal */}
       {coilModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg w-96">
+        <div className="fixed inset-0 bg-white bg-opacity-50 flex items-center justify-center">
+          <div className="p-6 rounded-lg w-96">
             <h3 className="text-lg font-semibold mb-4">Add New Coil</h3>
             <div className="space-y-4">
               <input

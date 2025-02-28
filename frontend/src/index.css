@@ -5,36 +5,13 @@
   line-height: 1.5;
   font-weight: 400;
   color-scheme: light dark;
-  background-color: #080707;
-  color: #333;
+  background-color: #ffffff;
+  color: #040404;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #070101;
-}
-
-button {
-  border-radius: 6px;
-  padding: 0.5em 1em;
-  font-size: 0.9em;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
-}
-
-button:hover {
-  transform: translateY(-1px);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    background-color: #1a1a1a;
-    color: #070303;
-  }
+  background-color: #ffffff;
 }
