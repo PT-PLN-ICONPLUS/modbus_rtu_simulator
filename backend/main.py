@@ -6,14 +6,12 @@ from pymodbus.datastore import ModbusSlaveContext, ModbusServerContext
 from pymodbus.datastore import ModbusSequentialDataBlock
 import threading
 import random
-import time
 from dotenv import load_dotenv
 import os
 import logging
 import asyncio
 from contextlib import asynccontextmanager
 import uvicorn
-from typing import Dict, List, Optional
 from pydantic import BaseModel
 
 # Data models for configuration
