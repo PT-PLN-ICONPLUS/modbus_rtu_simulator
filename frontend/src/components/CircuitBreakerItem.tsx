@@ -1,9 +1,14 @@
+// frontend/src/components/CircuitBreaker.tsx
 import { useState } from "react";
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
 
-function CircuitBreaker() {
-  // TODO DYNAMIC
+interface CircuitBreakerProps {
+  name?: string;
+  address?: number;
+}
+
+function CircuitBreaker({ name = "Circuit Breaker", address = 0 }: CircuitBreakerProps) {
   const [isLocal, setIsLocal] = useState(true);
   const [isOpen, setIsOpen] = useState(true);
   const [isSBO, setIsSBO] = useState(false);
@@ -72,8 +77,9 @@ function CircuitBreaker() {
 
         <div className="flex flex-col justify-center gap-5">
           <div className="text-sm font-semibold flex flex-col">
-            <text className="">IOA Data: 300</text>
-            <text className="">IOA Command: 6000</text>
+            <text className="">{name}</text>
+            <text className="">IOA Data: {address}</text>
+            <text className="">IOA Command: {address + 5700}</text>
             <text className="">SBO: {isSBO ? "True" : "False"}</text>
             <text className="">Type: {isDP ? "Double" : "Single"} Point Command</text>
           </div>
@@ -100,14 +106,13 @@ function CircuitBreaker() {
           <div className="flex flex-row gap-4 items-center">
             <span className={`font-bold ${isLocal ? 'text-red-500' : ''}`}>Local</span>
             <Switch
-              id="location-mode"
+              id={`location-mode-${address}`}
               checked={!isLocal}
               onCheckedChange={(checked) => setIsLocal(!checked)}
             />
             <span className={`font-bold ${!isLocal ? 'text-red-500' : ''}`}>Remote</span>
           </div>
         </div>
-
       </div>
     </div>
   )

@@ -78,8 +78,8 @@ coil_configs = {
 # Initialize MODBUS Data Store with 3 Coils
 store = ModbusSlaveContext(
     di=ModbusSequentialDataBlock(0, [0] * 10),  # Discrete Inputs
-    co=ModbusSequentialDataBlock(0, [0] * 10),  # Coil Statuses
-    hr=ModbusSequentialDataBlock(0, [0] * 10),  # Holding Registers
+    co=ModbusSequentialDataBlock(0, [0] * 1000),  # Coil Statuses
+    hr=ModbusSequentialDataBlock(0, [0] * 20000),  # Holding Registers
     ir=ModbusSequentialDataBlock(0, [0] * 10),  # Input Registers
 )
 context = ModbusServerContext(slaves=store, single=True)
