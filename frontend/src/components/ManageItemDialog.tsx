@@ -8,11 +8,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 
 interface Item {
   id: string;
   name: string;
   address: number;
+  unit?: string;
 }
 
 type ManageItemDialogProps = {
@@ -36,6 +39,9 @@ export function ManageItemDialog({
 }: ManageItemDialogProps) {
   const [name, setName] = React.useState("");
   const [address, setAddress] = React.useState("");
+  const [valueTelesignal, setValueTelesignal] = React.useState("");
+  const [valueTelemetry, setValueTelemetry] = React.useState("");
+  const [unit, setUnit] = React.useState("");
   const [selectedItem, setSelectedItem] = React.useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -73,7 +79,7 @@ export function ManageItemDialog({
                 />
               </div>
               <div className="grid w-full items-center gap-1.5">
-                <label htmlFor="address" className="text-sm font-medium">Address</label>
+                <label htmlFor="address" className="text-sm font-medium">Address/IOA</label>
                 <input
                   type="number"
                   id="address"
@@ -83,6 +89,52 @@ export function ManageItemDialog({
                   required
                 />
               </div>
+              {action === "add" && itemType === "Telesignals" && (
+                <div className="grid w-full items-center gap-1.5">
+                  <label htmlFor="value" className="text-sm font-medium">Value</label>
+                  <RadioGroup
+                    value={valueTelesignal}
+                    onValueChange={setValueTelesignal}
+                    defaultValue="off"
+                  >
+                    <div className="flex flex-row gap-6">
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="on" id="r1" />
+                        <Label htmlFor="r1">On</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="off" id="r2" />
+                        <Label htmlFor="r2">Off</Label>
+                      </div></div>
+                  </RadioGroup>
+                </div>
+              )}
+              {action === "add" && itemType === "Telemetry" && (
+                <>
+                  <div className="grid w-full items-center gap-1.5">
+                    <label htmlFor="value" className="text-sm font-medium">Value</label>
+                    <input
+                      type="number"
+                      id="value"
+                      className="border rounded p-2 w-full"
+                      value={valueTelemetry}
+                      onChange={(e) => setValueTelemetry(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="grid w-full items-center gap-1.5">
+                    <label htmlFor="unit" className="text-sm font-medium">Unit</label>
+                    <input
+                      type="text"
+                      id="unit"
+                      className="border rounded p-2 w-full"
+                      value={unit}
+                      onChange={(e) => setUnit(e.target.value)}
+                      required
+                    />
+                  </div>
+                </>
+              )}
             </>
           ) : (
             <div className="grid w-full items-center gap-1.5">

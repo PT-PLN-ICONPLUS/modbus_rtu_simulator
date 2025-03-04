@@ -1,23 +1,37 @@
-// frontend/src/components/CircuitBreaker.tsx
+// frontend/src/components/CircuitBreakerItem.tsx
 import { useState } from "react";
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
 
 interface CircuitBreakerProps {
   name?: string;
-  address?: number;
+  address?: number; // ioa_data
 }
 
-function CircuitBreaker({ name = "Circuit Breaker", address = 0 }: CircuitBreakerProps) {
-  const [isLocal, setIsLocal] = useState(true);
-  const [isOpen, setIsOpen] = useState(true);
-  const [isSBO, setIsSBO] = useState(false);
-  const [isDP, setIsDP] = useState(false);
+function CircuitBreaker({ address = 0 }: CircuitBreakerProps) {
+  // State variables based on your data structure
+  const [isLocal, setIsLocal] = useState(true); // remote flag (inverse of isLocal)
+  const [isOpen, setIsOpen] = useState(true); // value: 1 = open, 2 = close
+  const [isSBO, setIsSBO] = useState(false); // is_sbo flag
+  const [isDP, setIsDP] = useState(false); // is_double_point flag
+
+  // Calculate command address based on data address
+  const commandAddress = address + 5700;
+
+  // Get current value based on point type and state
+  const getValue = () => {
+    if (isDP) {
+      return isOpen ? 1 : 2; // Double point: 1 = open, 2 = close
+    } else {
+      return isOpen ? 1 : 2; // Single point: 1 = open, 2 = close
+    }
+  };
 
   return (
     <div>
       <div className="flex flex-row border-b-2">
         <div className="flex flex-col my-2 mx-6">
+          {/* Display lights remain the same */}
           <div className="flex flex-row">
             <div className="flex w-full justify-around gap-3">
               <div
@@ -29,6 +43,7 @@ function CircuitBreaker({ name = "Circuit Breaker", address = 0 }: CircuitBreake
             </div>
           </div>
 
+          {/* Control buttons remain the same */}
           <div className="flex flex-row gap-2 justify-around my-1">
             <Button
               onClick={() => setIsOpen(true)}
@@ -47,12 +62,14 @@ function CircuitBreaker({ name = "Circuit Breaker", address = 0 }: CircuitBreake
             </Button>
           </div>
 
+          {/* Special operation buttons with proper handling for double point */}
           <div className="flex flex-row justify-around gap-1 text-sm">
             <Button
               size="sm"
               variant="outline"
               className={`text-xs border-black text-blue-600 hover:bg-blue-600 hover:text-white ${(!isDP || !isLocal) ? 'opacity-50 cursor-not-allowed' : ''}`}
               disabled={!isDP || !isLocal}
+              onClick={() => isDP && setIsOpen(false)} // Set to invalid 0
             >
               Invalid 0
             </Button>
@@ -69,6 +86,7 @@ function CircuitBreaker({ name = "Circuit Breaker", address = 0 }: CircuitBreake
               variant="outline"
               className={`text-xs border-black text-blue-600 hover:bg-blue-600 hover:text-white ${(!isDP || !isLocal) ? 'opacity-50 cursor-not-allowed' : ''}`}
               disabled={!isDP || !isLocal}
+              onClick={() => isDP && setIsOpen(true)} // Set to invalid 3
             >
               Invalid 3
             </Button>
@@ -77,13 +95,17 @@ function CircuitBreaker({ name = "Circuit Breaker", address = 0 }: CircuitBreake
 
         <div className="flex flex-col justify-center gap-5">
           <div className="text-sm font-semibold flex flex-col">
-            <text className="">{name}</text>
-            <text className="">IOA Data: {address}</text>
-            <text className="">IOA Command: {address + 5700}</text>
-            <text className="">SBO: {isSBO ? "True" : "False"}</text>
-            <text className="">Type: {isDP ? "Double" : "Single"} Point Command</text>
+            {/* <p className="">{name}</p> */}
+            {!isDP && <p className="">IOA Data: {address}</p>}
+            {isDP && <p className="">IOA Data: {address + 1}</p>}
+            {!isDP && <p className="">IOA Command: {commandAddress}</p>}
+            {isDP && <p className="">IOA Command: {commandAddress + 1}</p>}
+            <p className="">SBO: {isSBO ? "True" : "False"}</p>
+            <p className="">Type: {isDP ? "Double" : "Single"} Point Command</p>
+            <p className="">Current Value: {getValue()}</p>
           </div>
 
+          {/* Toggle buttons */}
           <div className="flex flex-row gap-4 text-white">
             <Button
               size="sm"
@@ -103,6 +125,7 @@ function CircuitBreaker({ name = "Circuit Breaker", address = 0 }: CircuitBreake
             </Button>
           </div>
 
+          {/* Local/Remote switch */}
           <div className="flex flex-row gap-4 items-center">
             <span className={`font-bold ${isLocal ? 'text-red-500' : ''}`}>Local</span>
             <Switch

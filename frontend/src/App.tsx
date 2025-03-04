@@ -6,27 +6,40 @@ import { CircuitBreaker } from './components/CircuitBreakerItem';
 import { TeleSignal } from './components/TeleSignalItem';
 import { Telemetry } from './components/TeleMetryItem';
 
-interface ComponentItem {
+interface CircuitBreakerItem {
   id: string;
   name: string;
-  address: number;
+  address: number; // ioa_data
+}
+
+interface TeleSignalItem {
+  id: string;
+  name: string;
+  address: number; // ioa
+}
+
+interface TelemetryItem {
+  id: string;
+  name: string;
+  address: number; // ioa
+  unit: string;
 }
 
 function App() {
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [circuitBreakers, setCircuitBreakers] = useState<ComponentItem[]>([
+  const [circuitBreakers, setCircuitBreakers] = useState<CircuitBreakerItem[]>([
     { id: '1', name: 'Circuit Breaker 1', address: 1 },
     { id: '2', name: 'Circuit Breaker 2', address: 2 }
   ]);
-  const [teleSignals, setTeleSignals] = useState<ComponentItem[]>([
+  const [teleSignals, setTeleSignals] = useState<TeleSignalItem[]>([
     { id: '1', name: 'TeleSignal 1', address: 101 },
     { id: '2', name: 'TeleSignal 2', address: 102 },
     { id: '3', name: 'TeleSignal 3', address: 103 }
   ]);
-  const [telemetry, setTelemetry] = useState<ComponentItem[]>([
-    { id: '1', name: 'Telemetry 1', address: 201 },
-    { id: '2', name: 'Telemetry 2', address: 202 },
-    { id: '3', name: 'Telemetry 3', address: 203 }
+  const [telemetry, setTelemetry] = useState<TelemetryItem[]>([
+    { id: '1', name: 'Voltage', address: 201, unit: 'V' },
+    { id: '2', name: 'Current', address: 202, unit: 'A' },
+    { id: '3', name: 'Frequency', address: 203, unit: 'Hz' }
   ]);
 
   useEffect(() => {
@@ -39,7 +52,7 @@ function App() {
   }, []);
 
   const addCircuitBreaker = (data: { name: string; address: number }) => {
-    const newItem: ComponentItem = {
+    const newItem: CircuitBreakerItem = {
       id: Date.now().toString(),
       name: data.name,
       address: data.address
@@ -52,23 +65,24 @@ function App() {
   };
 
   const addTeleSignal = (data: { name: string; address: number }) => {
-    const newItem: ComponentItem = {
+    const newItem: TeleSignalItem = {
       id: Date.now().toString(),
       name: data.name,
       address: data.address
     };
     setTeleSignals([...teleSignals, newItem]);
-  };
+  }
 
   const removeTeleSignal = (data: { id: string }) => {
     setTeleSignals(teleSignals.filter(item => item.id !== data.id));
   };
 
-  const addTelemetry = (data: { name: string; address: number }) => {
-    const newItem: ComponentItem = {
+  const addTelemetry = (data: { name: string; address: number, unit?: string }) => {
+    const newItem: TelemetryItem = {
       id: Date.now().toString(),
       name: data.name,
-      address: data.address
+      address: data.address,
+      unit: data.unit || 'Unit'
     };
     setTelemetry([...telemetry, newItem]);
   };

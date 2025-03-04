@@ -64,18 +64,18 @@ function SectionTitle({ title, onAdd, onRemove, items }: SectionTitleProps) {
       <ManageItemDialog
         isOpen={addDialogOpen}
         onClose={() => setAddDialogOpen(false)}
-        title={`Add New ${title.slice(0, -1)}`}
+        title={`Add New ${title}`}
         action="add"
-        itemType={title.slice(0, -1)}
+        itemType={title}
         onSubmit={onAdd}
       />
 
       <ManageItemDialog
         isOpen={removeDialogOpen}
         onClose={() => setRemoveDialogOpen(false)}
-        title={`Remove ${title.slice(0, -1)}`}
+        title={`Remove ${title}`}
         action="remove"
-        itemType={title.slice(0, -1)}
+        itemType={title}
         items={items}
         onSubmit={onRemove}
       />

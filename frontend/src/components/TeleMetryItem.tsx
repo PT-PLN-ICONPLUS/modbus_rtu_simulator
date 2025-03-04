@@ -1,32 +1,33 @@
-// frontend/src/components/TeleMetry.tsx
+// frontend/src/components/TeleMetryItem.tsx
 import { useState } from 'react';
 import { Button } from './ui/button';
 
 interface TelemetryProps {
   name?: string;
-  address?: number;
+  address?: number; // ioa
+  unit?: string;
 }
 
-function Telemetry({ name = "Frequency", address = 117 }: TelemetryProps) {
+function Telemetry({ name = "Frequency", address = 117, unit = "Hz" }: TelemetryProps) {
   const [isAuto, setAuto] = useState(false);
-  const [value, setValue] = useState(400);
+  const [value, setValue] = useState(50.0); // Value as float
 
   const increaseValue = () => {
-    setValue(prev => Math.min(prev + 10, 1000));
+    setValue(prev => Math.min(parseFloat((prev + 0.1).toFixed(1)), 100.0));
   };
 
   const decreaseValue = () => {
-    setValue(prev => Math.max(prev - 10, 0));
+    setValue(prev => Math.max(parseFloat((prev - 0.1).toFixed(1)), 0.0));
   };
 
   return (
     <div className="p-3 flex items-center text-center border-b-2">
-      <text className="font-bold w-1/3">{name}</text>
+      <p className="font-bold w-1/3">{name}</p>
       <div className="flex flex-col w-1/3">
-        <text className="text-2xl font-bold">
-          {value} F
-        </text>
-        <text className="text-sm">IOA: {address}</text>
+        <p className="text-2xl font-bold">
+          {value} {unit}
+        </p>
+        <p className="text-sm">IOA: {address}</p>
       </div>
       <div className="flex flex-col w-1/3 gap-0.5 items-center">
         <Button
