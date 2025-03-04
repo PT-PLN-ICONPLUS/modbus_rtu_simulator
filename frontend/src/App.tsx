@@ -1,29 +1,13 @@
 import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
-import { Button } from './components/ui/button';
-import { Switch } from './components/ui/switch';
-import { SectionTitle } from './components/SectionTitile';
+import { SectionTitle } from './components/SectionTitle';
 import { CircuitBreaker } from './components/CircuitBreaker';
+import { TeleSignal } from './components/TeleSignal';
+import { Telemetry } from './components/TeleMetry';
 
 const socket = io('http://localhost:7001');
 
-interface RegisterConfig {
-  min_value: number;
-  max_value: number;
-  interval: number;
-  address: number;
-}
-
-interface CoilConfig {
-  interval: number;
-  address: number;
-}
-
 function App() {
-  const [registerValues, setRegisterValues] = useState<Record<string, number>>({});
-  const [coilValues, setCoilValues] = useState<Record<string, number>>({});
-  const [registerConfigs, setRegisterConfigs] = useState<Record<string, RegisterConfig>>({});
-  const [coilConfigs, setCoilConfigs] = useState<Record<string, CoilConfig>>({});
 
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const [coilModalOpen, setCoilModalOpen] = useState(false);
@@ -99,22 +83,6 @@ function App() {
     }
   };
 
-  const handleDeleteRegister = async (name: string) => {
-    try {
-      await fetch(`http://localhost:7001/registers/${name}`, { method: 'DELETE' });
-    } catch (error) {
-      console.error('Failed to delete register:', error);
-    }
-  };
-
-  const handleDeleteCoil = async (name: string) => {
-    try {
-      await fetch(`http://localhost:7001/coils/${name}`, { method: 'DELETE' });
-    } catch (error) {
-      console.error('Failed to delete coil:', error);
-    }
-  };
-
   const resetRegisterForm = () => {
     setNewRegisterName('');
     setNewRegisterMin(0);
@@ -129,11 +97,6 @@ function App() {
     setNewCoilAddress(0);
   };
 
-  // TODO CHANGE THIS LATER
-
-  const [isOn, setIsOn] = useState(true);
-  const [isAuto, setAuto] = useState(true);
-
   return (
     <div className="min-w-screen">
       <h1 className="text-3xl font-bold py-3 text-center">Modbus TCP Server Simulator</h1>
@@ -144,67 +107,23 @@ function App() {
           {/* Header Circuit Breaker Section */}
           <SectionTitle title="Circuit Breakers" />
           <CircuitBreaker />
+          <CircuitBreaker />
         </div>
 
         {/* Telesignal Section */}
         <div className="w-1/3 border-2">
           <SectionTitle title="Telesignals" />
-          <div className="p-3 flex items-center text-center border-b-2">
-            <text className="font-bold w-1/3">Over Current Relay 1A</text>
-            <div className="flex flex-col w-1/3">
-              <text className={`${isOn ? 'text-red-500' : 'text-green-500'} text-2xl font-bold`}>
-                {isOn ? 'ON' : 'OFF'}
-              </text>
-              <text className="text-sm">IOA: 117</text>
-            </div>
-            <div className="flex flex-col w-1/3 gap-0.5 items-center">
-              <Button
-                className={`${isAuto ? 'bg-green-500' : 'bg-white'} text-${isAuto ? 'white' : 'green-500'} rounded w-9 h-9 border-2 border-black`}
-                onClick={() => setAuto(!isAuto)}
-              >
-                A
-              </Button>
-              <Button
-                className={`${!isOn ? 'bg-green-500' : 'bg-red-500'} text-white rounded w-9 h-9  border-2 border-black`}
-                onClick={() => setIsOn(!isOn)}
-              >
-              </Button>
-            </div>
-          </div>
+          <TeleSignal />
+          <TeleSignal />
+          <TeleSignal />
         </div>
 
         {/* Telemetry Section */}
         <div className="w-1/3 border-2">
           <SectionTitle title="Telemetry" />
-          <div className="p-3 flex items-center text-center border-b-2">
-            <text className="font-bold w-1/3">Frequency</text>
-            <div className="flex flex-col w-1/3">
-              <text className="text-2xl font-bold">
-                400 F
-              </text>
-              <text className="text-sm">IOA: 117</text>
-            </div>
-            <div className="flex flex-col w-1/3 gap-0.5 items-center">
-              <Button
-                className={`text-black bg-white rounded w-9 h-9  border-2 border-black`}
-                onClick={() => setIsOn(!isOn)}
-              >
-                +
-              </Button>
-              <Button
-                className={`${isAuto ? 'bg-green-500' : 'bg-white'} text-${isAuto ? 'white' : 'green-500'} rounded w-9 h-9  border-2 border-black`}
-                onClick={() => setAuto(!isAuto)}
-              >
-                A
-              </Button>
-              <Button
-                className={`text-black bg-white rounded w-9 h-9  border-2 border-black`}
-                onClick={() => setIsOn(!isOn)}
-              >
-                -
-              </Button>
-            </div>
-          </div>
+          <Telemetry />
+          <Telemetry />
+          <Telemetry />
         </div>
       </div>
 
