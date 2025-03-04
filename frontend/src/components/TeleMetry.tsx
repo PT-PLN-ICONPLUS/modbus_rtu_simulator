@@ -16,19 +16,19 @@ function Telemetry() {
       </div>
       <div className="flex flex-col w-1/3 gap-0.5 items-center">
         <Button
-          className={`text-black bg-white rounded w-9 h-9  border-2 border-black`}
+          className={`text-black bg-white rounded w-9 h-9  border-2 border-black hover:bg-gray-300`}
           onClick={() => setIsOn(!isOn)}
         >
           +
         </Button>
         <Button
-          className={`${isAuto ? 'bg-green-500' : 'bg-white'} text-${isAuto ? 'white' : 'green-500'} rounded w-9 h-9  border-2 border-black`}
+          className={`${isAuto ? 'bg-green-500 hover:bg-green-300' : 'bg-white hover:hover:bg-gray-300'} text-${isAuto ? 'white' : 'green-500'} rounded w-9 h-9  border-2 border-black`}
           onClick={() => setAuto(!isAuto)}
         >
           A
         </Button>
         <Button
-          className={`text-black bg-white rounded w-9 h-9  border-2 border-black`}
+          className={`text-black bg-white rounded w-9 h-9  border-2 border-black hover:bg-gray-300`}
           onClick={() => setIsOn(!isOn)}
         >
           -
