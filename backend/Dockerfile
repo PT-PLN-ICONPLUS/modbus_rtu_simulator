@@ -6,6 +6,6 @@ COPY . /app
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 8001 8002 8003
+EXPOSE 8001
 
 CMD ["uvicorn", "main:socket_app", "--host", "0.0.0.0", "--port", "8001"]
