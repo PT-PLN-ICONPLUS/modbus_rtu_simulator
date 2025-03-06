@@ -94,6 +94,9 @@ export function ManageItemDialog({
   useEffect(() => {
     if (isOpen) {
       // Keep defaults
+      setScaleFactor("1");
+      // Default valTelemetry based on min and max if they're set
+
     } else {
       // Reset form
       setName("");
@@ -109,8 +112,9 @@ export function ManageItemDialog({
       setMinValue("");
       setMaxValue("");
       setErrors({});
+      setValTelemetry("");
     }
-  }, [isOpen]);
+  }, [isOpen, minValue, maxValue]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -262,7 +266,7 @@ export function ManageItemDialog({
           name,
           ioa: parseInt(address),
           unit,
-          value: valTelemetry,
+          value: parseFloat(valTelemetry),
           scale_factor: parseFloat(scaleFactor),
           min_value: parseFloat(minValue),
           max_value: parseFloat(maxValue),

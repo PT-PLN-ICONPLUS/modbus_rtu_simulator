@@ -176,17 +176,19 @@ function App() {
     name: string;
     ioa: number;
     unit: string;
+    value: number;
     min_value: number;
     max_value: number;
     interval: number;
+    scale_factor: number;
   }) => {
     const newItem: TelemetryItem = {
       id: Date.now().toString(),
       name: data.name,
       ioa: data.ioa,
       unit: data.unit || 'Unit',
-      value: (data.min_value + data.max_value) / 2, // Default value in the middle of range
-      scale_factor: 1,
+      value: data.value,
+      scale_factor: parseFloat(data.scale_factor?.toString() || "1"),
       min_value: data.min_value,
       max_value: data.max_value,
       interval: data.interval
