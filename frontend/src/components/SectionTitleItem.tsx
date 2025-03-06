@@ -1,4 +1,3 @@
-// frontend/src/components/SectionTitle.tsx (updated)
 import React from "react";
 import { Button } from "./ui/button";
 import {
@@ -7,19 +6,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "./ui/tooltip";
-import { ManageItemDialog } from "./ManageItemDialog";
-
-interface Item {
-  id: string;
-  name: string;
-  address: number;
-}
+import { ManageItemDialog, Item } from "./ManageItemDialog";
 
 interface SectionTitleProps {
   title: string;
-  onAdd: (data: { name: string; address: number }) => void;
+  onAdd: (data: any) => void;
   onRemove: (data: { id: string }) => void;
-  items: Item[];
+  items: Item[]; // Use the Item type expected by ManageItemDialog
 }
 
 function SectionTitle({ title, onAdd, onRemove, items }: SectionTitleProps) {

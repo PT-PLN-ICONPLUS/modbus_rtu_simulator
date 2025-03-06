@@ -4,11 +4,12 @@ import { useState } from 'react';
 
 interface TeleSignalProps {
   name: string;
-  address: number; // ioa
+  ioa: number; // ioa
+  value: number; // 0 is off, 1 is on
 }
 
-function TeleSignal({ name = "Over Current Relay 1A", address = 117 }: TeleSignalProps) {
-  const [isOn, setIsOn] = useState(false); // value: 0 is off, 1 is on
+function TeleSignal({ name = "Test", ioa = 117, value = 0 }: TeleSignalProps) {
+  const [isOn, setIsOn] = useState(value); // value: 0 is off, 1 is on
   const [isAuto, setAuto] = useState(true);
 
   return (
@@ -18,7 +19,7 @@ function TeleSignal({ name = "Over Current Relay 1A", address = 117 }: TeleSigna
         <p className={`${isOn ? 'text-green-500' : 'text-red-500'} text-2xl font-bold`}>
           {isOn ? 'ON' : 'OFF'}
         </p>
-        <p className="text-sm">IOA: {address}</p>
+        <p className="text-sm">IOA: {ioa}</p>
       </div>
       <div className="flex flex-col w-1/3 gap-0.5 items-center">
         <Button
@@ -29,7 +30,7 @@ function TeleSignal({ name = "Over Current Relay 1A", address = 117 }: TeleSigna
         </Button>
         <Button
           className={`${isOn ? 'bg-green-500' : 'bg-red-500'} text-white rounded w-9 h-9  border-2 border-black`}
-          onClick={() => setIsOn(!isOn)}
+          onClick={() => setIsOn(isOn ? 0 : 1)}
         >
           {isOn ? 'ON' : 'OFF'}
         </Button>

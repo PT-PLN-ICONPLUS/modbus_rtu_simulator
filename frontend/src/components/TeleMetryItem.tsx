@@ -3,21 +3,45 @@ import { useState } from 'react';
 import { Button } from './ui/button';
 
 interface TelemetryProps {
-  name?: string;
-  address?: number; // ioa
+  name: string;
+  ioa?: number; // ioa
   unit?: string;
+  value?: number;
+  min_value?: number;
+  max_value?: number;
+  scale_factor?: number;
 }
 
-function Telemetry({ name = "Frequency", address = 117, unit = "Hz" }: TelemetryProps) {
+function Telemetry({
+  name = "Frequency",
+  ioa = 117,
+  unit = "Hz",
+  value: initialValue = 50.0,
+  min_value = 0.0,
+  max_value = 100.0,
+  scale_factor = 1.0
+}: TelemetryProps) {
   const [isAuto, setAuto] = useState(false);
-  const [value, setValue] = useState(50.0); // Value as float
+  const [value, setValue] = useState(initialValue); // Value as float
+
+  const step = scale_factor || 1.0;
 
   const increaseValue = () => {
-    setValue(prev => Math.min(parseFloat((prev + 0.1).toFixed(1)), 100.0));
+    setValue(prev => {
+      const newValue = Math.min(prev + step, max_value);
+      // Round to avoid floating point precision issues
+      const precision = step >= 1 ? 0 : -Math.floor(Math.log10(step));
+      return Number(newValue.toFixed(precision));
+    });
   };
 
   const decreaseValue = () => {
-    setValue(prev => Math.max(parseFloat((prev - 0.1).toFixed(1)), 0.0));
+    setValue(prev => {
+      const newValue = Math.max(prev - step, min_value);
+      // Round to avoid floating point precision issues
+      const precision = step >= 1 ? 0 : -Math.floor(Math.log10(step));
+      return Number(newValue.toFixed(precision));
+    });
   };
 
   return (
@@ -27,7 +51,7 @@ function Telemetry({ name = "Frequency", address = 117, unit = "Hz" }: Telemetry
         <p className="text-2xl font-bold">
           {value} {unit}
         </p>
-        <p className="text-sm">IOA: {address}</p>
+        <p className="text-sm">IOA: {ioa}</p>
       </div>
       <div className="flex flex-col w-1/3 gap-0.5 items-center">
         <Button
