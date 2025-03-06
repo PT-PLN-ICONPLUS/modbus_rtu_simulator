@@ -11,6 +11,7 @@ interface CircuitBreakerProps {
   ioa_command_dp?: number;
   is_sbo?: boolean;
   is_double_point?: boolean;
+  is_mode_double_point?: boolean;
   interval?: number;
   onValueChange?: (value: number) => void;
 }
@@ -23,14 +24,14 @@ function CircuitBreaker({
   ioa_command_dp,
   is_sbo = false,
   is_double_point = false,
-  interval = 5,
+  is_mode_double_point = false,
   onValueChange
 }: CircuitBreakerProps) {
   // State variables based on your data structure
   const [isLocal, setIsLocal] = useState(true); // Controls if remote (false) or local (true)
   const [value, setValue] = useState(0); // 0 or 3 for invalid, 1 for open, 2 for close
   const [isSBO, setIsSBO] = useState(is_sbo);
-  const [isDP, setIsDP] = useState(is_double_point);
+  const [isDP, setIsDP] = useState(is_mode_double_point);
 
   // Handle internal value change with notification to parent component
   const handleValueChange = (newValue: number) => {
@@ -122,13 +123,19 @@ function CircuitBreaker({
         <div className="flex flex-col justify-center gap-3">
           <div className="text-sm flex flex-col">
             <p className="font-bold">{name}</p>
-            <p className="">IOA Data: {ioa_data}</p>
-            {isDP && <p className="">IOA Data DP: {ioa_data_dp}</p>}
-            <p className="">IOA Command: {ioa_command}</p>
-            {isDP && <p className="">IOA Command DP: {ioa_command_dp}</p>}
+            {isDP ? (
+              <>
+                <p className="">IOA Data DP: {ioa_data_dp}</p>
+                <p className="">IOA Command DP: {ioa_command_dp}</p>
+              </>
+            ) : (
+              <>
+                <p className="">IOA Data: {ioa_data}</p>
+                <p className="">IOA Command: {ioa_command}</p>
+              </>
+            )}
             <p className="">SBO: {isSBO ? "True" : "False"}</p>
             <p className="">Type: {isDP ? "Double" : "Single"} Point Command</p>
-            <p className="">Update Interval: {interval}s</p>
           </div>
 
           {/* Toggle buttons */}
@@ -147,7 +154,7 @@ function CircuitBreaker({
               className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isDP ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'
                 } ${!isLocal ? 'opacity-50' : ''}`}
               onClick={() => isLocal && setIsDP(!isDP)}
-              disabled={!isLocal}
+              disabled={!isLocal || !is_double_point}
             >
               Double Point
             </Button>

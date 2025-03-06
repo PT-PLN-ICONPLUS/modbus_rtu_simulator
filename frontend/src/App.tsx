@@ -215,7 +215,17 @@ function App() {
             items={circuitBreakers}
           />
           {circuitBreakers.map(item => (
-            <CircuitBreaker key={item.id} name={item.name} />
+            <CircuitBreaker
+              key={item.id}
+              name={item.name}
+              ioa_data={item.ioa_data}
+              ioa_data_dp={item.ioa_data_dp}
+              ioa_command={item.ioa_command}
+              ioa_command_dp={item.ioa_command_dp}
+              is_sbo={item.is_sbo}
+              is_double_point={item.is_double_point}
+              interval={item.interval}
+            />
           ))}
         </div>
 
