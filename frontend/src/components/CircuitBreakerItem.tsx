@@ -8,7 +8,7 @@ interface CircuitBreakerProps {
   address?: number; // ioa_data
 }
 
-function CircuitBreaker({ address = 0 }: CircuitBreakerProps) {
+function CircuitBreaker({ name, address = 0 }: CircuitBreakerProps) {
   // State variables based on your data structure
   const [isLocal, setIsLocal] = useState(true); // remote flag (inverse of isLocal)
   const [value, setValue] = useState(0); // value: 1 = open, 2 = close
@@ -88,9 +88,9 @@ function CircuitBreaker({ address = 0 }: CircuitBreakerProps) {
           </div>
         </div>
 
-        <div className="flex flex-col justify-center gap-5">
-          <div className="text-sm font-semibold flex flex-col">
-            {/* <p className="">{name}</p> */}
+        <div className="flex flex-col justify-center gap-3">
+          <div className="text-sm flex flex-col">
+            <p className="font-bold">{name}</p>
             {!isDP && <p className="">IOA Data: {address}</p>}
             {isDP && <p className="">IOA Data: {address + 1}</p>}
             {!isDP && <p className="">IOA Command: {commandAddress}</p>}
