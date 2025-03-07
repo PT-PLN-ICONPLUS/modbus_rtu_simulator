@@ -1,3 +1,4 @@
+import time
 from typing import Dict
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -45,29 +46,6 @@ app.add_middleware(
 circuit_breakers: Dict[str, CircuitBreakerItem] = {}
 tele_signals: Dict[str, TeleSignalItem] = {}
 telemetry_items: Dict[str, TelemetryItem] = {}
-
-# Default configurations
-# register_configs = {
-#     'VR': {'min_value': 200, 'max_value': 300, 'interval': 1, 'address': 0},
-#     'P': {'min_value': 100, 'max_value': 200, 'interval': 1, 'address': 1},
-#     'Q': {'min_value': 150, 'max_value': 300, 'interval': 1, 'address': 2},
-#     'PF': {'min_value': 100, 'max_value': 200, 'interval': 1, 'address': 3},
-#     'VS': {'min_value': 200, 'max_value': 300, 'interval': 1, 'address': 4},
-#     'VT': {'min_value': 200, 'max_value': 300, 'interval': 1, 'address': 5},
-#     'F': {'min_value': 49, 'max_value': 51, 'interval': 1, 'address': 6},
-#     'IR': {'min_value': 90, 'max_value': 100, 'interval': 1, 'address': 7},
-#     'IS': {'min_value': 90, 'max_value': 100, 'interval': 1, 'address': 8},
-#     'IT': {'min_value': 90, 'max_value': 100, 'interval': 1, 'address': 9}
-# }
-
-# coil_configs = {
-#     'CB': {'interval': 10, 'address': 0},
-#     'LOCAL': {'interval': 10, 'address': 1},
-#     'OCR': {'interval': 10, 'address': 2},
-#     'GFT': {'interval': 10, 'address': 3},
-#     'RACK IN': {'interval': 10, 'address': 4},
-#     'RACK OUT': {'interval': 10, 'address': 5}
-# }
 
 # Initialize MODBUS Data Store with sufficient space
 store = ModbusSlaveContext(
@@ -124,6 +102,28 @@ async def add_tele_signal(sid, data):
     return {"status": "success", "message": f"Added telesignal {item.name}"}
 
 @sio.event
+async def update_telesignal(sid, data):
+    ioa = data.get('ioa')
+    # Find the item by IOA
+    for item_id, item in list(tele_signals.items()):
+        if item.ioa == ioa:
+            # Update auto_mode if provided
+            if 'auto_mode' in data:
+                tele_signals[item_id].auto_mode = data['auto_mode']
+            
+            # Update value if provided
+            if 'value' in data:
+                new_value = data['value']
+                tele_signals[item_id].value = new_value
+                store.setValues(2, item.ioa, [new_value])
+            
+            logger.info(f"Updated telesignal: {item.name} (IOA: {item.ioa})")
+            await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()])
+            return {"status": "success"}
+    
+    return {"status": "error", "message": "Telesignal not found"}
+
+@sio.event
 async def remove_tele_signal(sid, data):
     item_id = data.get('id')
     if item_id and item_id in tele_signals:
@@ -155,11 +155,31 @@ async def remove_telemetry(sid, data):
         return {"status": "success", "message": f"Removed telemetry {item.name}"}
     return {"status": "error", "message": "Telemetry not found"}
 
-# Timer function to simulate value changes
+
+
 async def simulate_values():
+    # Track the last update time for each item
+    last_update_times = {
+        "circuit_breakers": {},
+        "tele_signals": {},
+        "telemetry_items": {}
+    }
+    
     while True:
+        current_time = time.time()
+        has_updates = {
+            "circuit_breakers": False,
+            "tele_signals": False,
+            "telemetry_items": False
+        }
+        
         # Simulate circuit breakers in auto mode
         for item_id, item in list(circuit_breakers.items()):
+            # Skip if not due for update yet
+            last_update = last_update_times["circuit_breakers"].get(item_id, 0)
+            if current_time - last_update < item.interval:
+                continue
+                
             if not item.remote:  # Only change values if not in remote mode
                 continue
                 
@@ -169,32 +189,58 @@ async def simulate_values():
                 store.setValues(1, item.ioa_data, [new_value])
                 if item.is_double_point and item.ioa_data_dp:
                     store.setValues(1, item.ioa_data_dp, [new_value >> 1])
+                    
+                # Record update time
+                last_update_times["circuit_breakers"][item_id] = current_time
+                has_updates["circuit_breakers"] = True
         
         # Simulate telesignals in auto mode
         for item_id, item in list(tele_signals.items()):
-            # Add auto mode check here if implemented in frontend
+            # Skip if not due for update yet
+            last_update = last_update_times["tele_signals"].get(item_id, 0)
+            if current_time - last_update < item.interval:
+                continue
+            
+            # Check if auto mode is enabled
+            if not getattr(item, 'auto_mode', True):  # Default to True for backward compatibility
+                continue
+                
             new_value = random.randint(item.min_value, item.max_value)
             if new_value != item.value:
                 tele_signals[item_id].value = new_value
                 store.setValues(2, item.ioa, [new_value])
+                
+                # Record update time
+                last_update_times["tele_signals"][item_id] = current_time
+                has_updates["tele_signals"] = True
         
         # Simulate telemetry in auto mode
         for item_id, item in list(telemetry_items.items()):
+            # Skip if not due for update yet
+            last_update = last_update_times["telemetry_items"].get(item_id, 0)
+            if current_time - last_update < item.interval:
+                continue
+                
             # Add auto mode check here if implemented in frontend
             new_value = random.uniform(item.min_value, item.max_value)
             telemetry_items[item_id].value = round(new_value, 2)
             scaled_value = int(new_value / item.scale_factor)
             store.setValues(3, item.ioa, [scaled_value])
             
-        # Broadcast updates
-        if circuit_breakers:
+            # Record update time
+            last_update_times["telemetry_items"][item_id] = current_time
+            has_updates["telemetry_items"] = True
+            
+        # Broadcast updates only if there were changes
+        if has_updates["circuit_breakers"] and circuit_breakers:
             await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
-        if tele_signals:
+        if has_updates["tele_signals"] and tele_signals:
             await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()])
-        if telemetry_items:
+        if has_updates["telemetry_items"] and telemetry_items:
             await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()])
             
-        await asyncio.sleep(1)
+        # Use a shorter sleep time to check more frequently, but not burn CPU
+        await asyncio.sleep(0.1)
 
 # Start the MODBUS server
 def start_modbus_server():

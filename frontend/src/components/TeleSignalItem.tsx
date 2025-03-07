@@ -1,6 +1,7 @@
 // frontend/src/components/TeleSignalItem.tsx
 import { Button } from "./ui/button";
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import socket from '../socket';
 
 interface TeleSignalProps {
   name: string;
@@ -11,6 +12,27 @@ interface TeleSignalProps {
 function TeleSignal({ name = "Test", ioa = 117, value = 0 }: TeleSignalProps) {
   const [isOn, setIsOn] = useState(value); // value: 0 is off, 1 is on
   const [isAuto, setAuto] = useState(true);
+
+  useEffect(() => {
+    setIsOn(value);
+  }, [value]);
+
+  useEffect(() => {
+    socket.emit('update_telesignal', {
+      ioa,
+      auto_mode: isAuto
+    });
+  }, [isAuto, ioa]);
+
+  const toggleValue = () => {
+    const newValue = isOn ? 0 : 1;
+    setIsOn(newValue);
+
+    socket.emit('update_telesignal', {
+      ioa,
+      value: newValue
+    });
+  };
 
   return (
     <div className="p-3 flex items-center text-center border">
@@ -30,7 +52,7 @@ function TeleSignal({ name = "Test", ioa = 117, value = 0 }: TeleSignalProps) {
         </Button>
         <Button
           className={`${isOn ? 'bg-green-500' : 'bg-red-500'} text-white rounded w-9 h-9  border-2 border-black`}
-          onClick={() => setIsOn(isOn ? 0 : 1)}
+          onClick={toggleValue}
         >
           {isOn ? 'ON' : 'OFF'}
         </Button>

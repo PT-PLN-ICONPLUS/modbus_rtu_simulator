@@ -24,6 +24,7 @@ class TeleSignalItem(BaseModel):
     min_value: int = 0
     max_value: int = 1
     interval: int = 10
+    auto_mode: bool = True
 
 class TelemetryItem(BaseModel):
     id: str

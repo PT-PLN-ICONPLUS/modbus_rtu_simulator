@@ -1,6 +1,6 @@
 // frontend/src/App.tsx
 import { useState, useEffect } from 'react';
-import { io, Socket } from 'socket.io-client';
+import socket from './socket';
 import { SectionTitle } from './components/SectionTitleItem';
 import { CircuitBreaker } from './components/CircuitBreakerItem';
 import { TeleSignal } from './components/TeleSignalItem';
@@ -45,7 +45,6 @@ interface TelemetryItem {
 }
 
 function App() {
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [circuitBreakers, setCircuitBreakers] = useState<CircuitBreakerItem[]>([
     {
       id: '1',
@@ -91,46 +90,25 @@ function App() {
   ]);
 
   useEffect(() => {
-    // Get backend host and port from environment variables or use defaults
-    const backendHost = process.env.FASTAPI_HOST || 'localhost';
-    const backendPort = process.env.FASTAPI_PORT || '7001';
-    const socketUrl = `http://${backendHost}:${backendPort}`;
-
-    console.log(`Connecting to socket at: ${socketUrl}`);
-    const newSocket = io(socketUrl);
-
-    newSocket.on('connect', () => {
-      console.log(`Connected to backend socket.io server with ID: ${newSocket.id}`);
-    });
-
-    newSocket.on('disconnect', (reason) => {
-      console.log(`Disconnected from socket server. Socket ID was: ${newSocket.id}, reason: ${reason}`);
-    });
-
-    newSocket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-    });
-
-    newSocket.on('circuit_breakers', (data: CircuitBreakerItem[]) => {
+    socket.on('circuit_breakers', (data: CircuitBreakerItem[]) => {
       console.log('Received circuit breakers update:', data);
       setCircuitBreakers(data);
     });
 
-    newSocket.on('tele_signals', (data: TeleSignalItem[]) => {
+    socket.on('tele_signals', (data: TeleSignalItem[]) => {
       console.log('Received telesignals update:', data);
       setTeleSignals(data);
     });
 
-    newSocket.on('telemetry_items', (data: TelemetryItem[]) => {
+    socket.on('telemetry_items', (data: TelemetryItem[]) => {
       console.log('Received telemetry update:', data);
       setTelemetry(data);
     });
 
-
-    setSocket(newSocket);
-
     return () => {
-      newSocket.disconnect();
+      socket.off('circuit_breakers');
+      socket.off('tele_signals');
+      socket.off('telemetry_items');
     };
   }, []);
 

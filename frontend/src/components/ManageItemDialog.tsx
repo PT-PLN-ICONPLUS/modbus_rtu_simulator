@@ -289,7 +289,7 @@ export function ManageItemDialog({
     <>
       <Toaster />
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>
