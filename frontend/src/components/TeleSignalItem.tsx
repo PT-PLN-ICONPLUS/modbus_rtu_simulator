@@ -10,11 +10,11 @@ interface TeleSignalProps {
 }
 
 function TeleSignal({ name = "Test", ioa = 117, value = 0 }: TeleSignalProps) {
-  const [isOn, setIsOn] = useState(value); // value: 0 is off, 1 is on
-  const [isAuto, setAuto] = useState(true);
+  const [isOn, setIsOn] = useState(value === 1); // value: 0 is off, 1 is on
+  const [isAuto, setAuto] = useState(false);
 
   useEffect(() => {
-    setIsOn(value);
+    setIsOn(value === 1);
   }, [value]);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ function TeleSignal({ name = "Test", ioa = 117, value = 0 }: TeleSignalProps) {
 
   const toggleValue = () => {
     const newValue = isOn ? 0 : 1;
-    setIsOn(newValue);
+    setIsOn(!isOn);
 
     socket.emit('update_telesignal', {
       ioa,
