@@ -119,6 +119,15 @@ export function ManageItemDialog({
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
+    // For remove action, only validate selectedItem
+    if (action === "remove") {
+      if (!selectedItem) {
+        newErrors.selectedItem = "Please select an item to remove";
+      }
+      setErrors(newErrors);
+      return Object.keys(newErrors).length === 0;
+    }
+
     // Common validations
     if (!name.trim()) {
       newErrors.name = "Name is required";
@@ -220,11 +229,6 @@ export function ManageItemDialog({
       if (Number(minValue) >= Number(maxValue)) {
         newErrors.range = "Maximum value must be greater than minimum value";
       }
-    }
-
-    // Remove validation
-    if (action === "remove" && !selectedItem) {
-      newErrors.selectedItem = "Please select an item to remove";
     }
 
     setErrors(newErrors);

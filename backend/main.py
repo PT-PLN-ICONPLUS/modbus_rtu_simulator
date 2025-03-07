@@ -83,9 +83,9 @@ context = ModbusServerContext(slaves=store, single=True)
 async def connect(sid, environ):
     logger.info(f"Client connected: {sid}")
     # Send current state to new clients
-    await sio.emit('circuit_breakers', list(circuit_breakers.values()), room=sid)
-    await sio.emit('tele_signals', list(tele_signals.values()), room=sid)
-    await sio.emit('telemetry_items', list(telemetry_items.values()), room=sid)
+    await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()], room=sid)
+    await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()], room=sid)
+    await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()], room=sid)
 
 @sio.event
 async def disconnect(sid):
@@ -100,7 +100,7 @@ async def add_circuit_breaker(sid, data):
     if item.is_double_point and item.ioa_data_dp:
         store.setValues(1, item.ioa_data_dp, [item.value])
     logger.info(f"Added circuit breaker: {item.name} with IOA {item.ioa_data}")
-    await sio.emit('circuit_breakers', list(circuit_breakers.values()))
+    await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
     return {"status": "success", "message": f"Added circuit breaker {item.name}"}
 
 @sio.event
@@ -109,7 +109,7 @@ async def remove_circuit_breaker(sid, data):
     if item_id and item_id in circuit_breakers:
         item = circuit_breakers.pop(item_id)
         logger.info(f"Removed circuit breaker: {item.name}")
-        await sio.emit('circuit_breakers', list(circuit_breakers.values()))
+        await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
         return {"status": "success", "message": f"Removed circuit breaker {item.name}"}
     return {"status": "error", "message": "Circuit breaker not found"}
 
@@ -120,7 +120,7 @@ async def add_tele_signal(sid, data):
     # Update Modbus register with initial state
     store.setValues(2, item.ioa, [item.value])  # Discrete input
     logger.info(f"Added telesignal: {item.name} with IOA {item.ioa}")
-    await sio.emit('tele_signals', list(tele_signals.values()))
+    await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()])
     return {"status": "success", "message": f"Added telesignal {item.name}"}
 
 @sio.event
@@ -129,7 +129,7 @@ async def remove_tele_signal(sid, data):
     if item_id and item_id in tele_signals:
         item = tele_signals.pop(item_id)
         logger.info(f"Removed telesignal: {item.name}")
-        await sio.emit('tele_signals', list(tele_signals.values()))
+        await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()])
         return {"status": "success", "message": f"Removed telesignal {item.name}"}
     return {"status": "error", "message": "Telesignal not found"}
 
@@ -142,7 +142,7 @@ async def add_telemetry(sid, data):
     scaled_value = int(item.value / item.scale_factor)
     store.setValues(3, item.ioa, [scaled_value])  # Holding register
     logger.info(f"Added telemetry: {item.name} with IOA {item.ioa}")
-    await sio.emit('telemetry_items', list(telemetry_items.values()))
+    await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()])
     return {"status": "success", "message": f"Added telemetry {item.name}"}
 
 @sio.event
@@ -151,14 +151,13 @@ async def remove_telemetry(sid, data):
     if item_id and item_id in telemetry_items:
         item = telemetry_items.pop(item_id)
         logger.info(f"Removed telemetry: {item.name}")
-        await sio.emit('telemetry_items', list(telemetry_items.values()))
+        await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()])
         return {"status": "success", "message": f"Removed telemetry {item.name}"}
     return {"status": "error", "message": "Telemetry not found"}
 
 # Timer function to simulate value changes
 async def simulate_values():
     while True:
-        logger.debug("Simulating values")
         # Simulate circuit breakers in auto mode
         for item_id, item in list(circuit_breakers.items()):
             if not item.remote:  # Only change values if not in remote mode
@@ -189,11 +188,11 @@ async def simulate_values():
             
         # Broadcast updates
         if circuit_breakers:
-            await sio.emit('circuit_breakers', list(circuit_breakers.values()))
+            await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
         if tele_signals:
-            await sio.emit('tele_signals', list(tele_signals.values()))
+            await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()])
         if telemetry_items:
-            await sio.emit('telemetry_items', list(telemetry_items.values()))
+            await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()])
             
         await asyncio.sleep(1)
 
