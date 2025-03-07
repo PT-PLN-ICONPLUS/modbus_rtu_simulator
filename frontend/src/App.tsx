@@ -111,6 +111,22 @@ function App() {
       console.error('Socket connection error:', error);
     });
 
+    newSocket.on('circuit_breakers', (data: CircuitBreakerItem[]) => {
+      console.log('Received circuit breakers update:', data);
+      setCircuitBreakers(data);
+    });
+
+    newSocket.on('tele_signals', (data: TeleSignalItem[]) => {
+      console.log('Received telesignals update:', data);
+      setTeleSignals(data);
+    });
+
+    newSocket.on('telemetry_items', (data: TelemetryItem[]) => {
+      console.log('Received telemetry update:', data);
+      setTelemetry(data);
+    });
+
+
     setSocket(newSocket);
 
     return () => {
@@ -143,11 +159,22 @@ function App() {
       max_value: data.is_double_point ? 3 : 2,
       interval: data.interval
     };
-    setCircuitBreakers([...circuitBreakers, newItem]);
+
+    // Send to backend instead of just updating local state
+    if (socket) {
+      socket.emit('add_circuit_breaker', newItem, (response: any) => {
+        console.log('Add circuit breaker response:', response);
+      });
+    }
   };
 
   const removeCircuitBreaker = (data: { id: string }) => {
-    setCircuitBreakers(circuitBreakers.filter(item => item.id !== data.id));
+    // Send to backend instead of just updating local state
+    if (socket) {
+      socket.emit('remove_circuit_breaker', data, (response: any) => {
+        console.log('Remove circuit breaker response:', response);
+      });
+    }
   };
 
   const addTeleSignal = (data: {
@@ -165,11 +192,20 @@ function App() {
       max_value: 1,
       interval: data.interval
     };
-    setTeleSignals([...teleSignals, newItem]);
+
+    if (socket) {
+      socket.emit('add_tele_signal', newItem, (response: any) => {
+        console.log('Add tele signal response:', response);
+      });
+    }
   };
 
   const removeTeleSignal = (data: { id: string }) => {
-    setTeleSignals(teleSignals.filter(item => item.id !== data.id));
+    if (socket) {
+      socket.emit('remove_tele_signal', data, (response: any) => {
+        console.log('Remove tele signal response:', response);
+      });
+    }
   };
 
   const addTelemetry = (data: {
@@ -193,11 +229,20 @@ function App() {
       max_value: data.max_value,
       interval: data.interval
     };
-    setTelemetry([...telemetry, newItem]);
+
+    if (socket) {
+      socket.emit('add_telemetry', newItem, (response: any) => {
+        console.log('Add telemetry response:', response);
+      });
+    }
   };
 
   const removeTelemetry = (data: { id: string }) => {
-    setTelemetry(telemetry.filter(item => item.id !== data.id));
+    if (socket) {
+      socket.emit('remove_telemetry', data, (response: any) => {
+        console.log('Remove telemetry response:', response);
+      });
+    }
   };
 
   return (
