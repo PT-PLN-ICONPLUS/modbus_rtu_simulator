@@ -1,24 +1,34 @@
 services:
-  backend_modbus_tcp_server_simulator_1:
+  backend_modbus_tcp_server_simulator:
     build: ./backend
     container_name: backend_modbus_tcp_server_simulator_1
     hostname: backend_modbus_tcp_server_simulator_1
     ports:
+      - "7001:7001"
       - "8001:8001"
-    # networks:
-    #   - app-tier
+    networks:
+      - app-tier
     env_file:
       - ./backend/.env
+    environment:
+      - FASTAPI_HOST=0.0.0.0
+      - FASTAPI_PORT=7001
+      - MODBUS_HOST=0.0.0.0
+      - MODBUS_PORT=8001
 
-  frontend_modbus_tcp_server_simulator_1:
+  frontend_modbus_tcp_server_simulator:
     build: ./frontend
     container_name: frontend_modbus_tcp_server_simulator_1
     ports:
       - "3001:3001"
-    # networks:
-    #   - app-tier
+    networks:
+      - app-tier
     env_file:
       - ./frontend/.env
+    environment:
+      - REACT_PORT=3001
+      - FASTAPI_HOST=backend_modbus_tcp_server_simulator_1
+      - FASTAPI_PORT=7001
     depends_on:
       - backend_modbus_tcp_server_simulator_1
 
@@ -68,6 +78,6 @@ services:
   #   depends_on:
   #     - backend_modbus_tcp_server_simulator_3
 
-# networks:
-#   app-tier:
-#     external: true
+networks:
+  app-tier:
+    external: true
