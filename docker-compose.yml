@@ -9,8 +9,6 @@ services:
     #   - app-tier
     env_file:
       - ./backend/.env
-    environment:
-      - PORT=8001
 
   frontend_modbus_tcp_server_simulator_1:
     build: ./frontend
@@ -21,8 +19,6 @@ services:
     #   - app-tier
     env_file:
       - ./frontend/.env
-    environment:
-      - PORT=3001
     depends_on:
       - backend_modbus_tcp_server_simulator_1
 
