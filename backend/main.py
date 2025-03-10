@@ -145,6 +145,31 @@ async def add_telemetry(sid, data):
     await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()])
     return {"status": "success", "message": f"Added telemetry {item.name}"}
 
+# Add this function after the update_telesignal event handler
+@sio.event
+async def update_telemetry(sid, data):
+    ioa = data.get('ioa')
+    # Find the item by IOA
+    for item_id, item in list(telemetry_items.items()):
+        if item.ioa == ioa:
+            # Update auto_mode if provided
+            if 'auto_mode' in data:
+                telemetry_items[item_id].auto_mode = data['auto_mode']
+                logger.info(f"Set auto_mode to {data['auto_mode']} for telemetry: {item.name} (IOA: {item.ioa})")
+            
+            # Update value if provided
+            if 'value' in data:
+                new_value = data['value']
+                telemetry_items[item_id].value = new_value
+                scaled_value = int(new_value / item.scale_factor)
+                store.setValues(3, item.ioa, [scaled_value])
+                logger.info(f"Updated telemetry value to {new_value} for: {item.name} (IOA: {item.ioa})")
+            
+            await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()])
+            return {"status": "success"}
+    
+    return {"status": "error", "message": "Telemetry not found"}
+
 @sio.event
 async def remove_telemetry(sid, data):
     item_id = data.get('id')
@@ -154,8 +179,6 @@ async def remove_telemetry(sid, data):
         await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()])
         return {"status": "success", "message": f"Removed telemetry {item.name}"}
     return {"status": "error", "message": "Telemetry not found"}
-
-
 
 async def simulate_values():
     # Track the last update time for each item
@@ -221,7 +244,10 @@ async def simulate_values():
             if current_time - last_update < item.interval:
                 continue
                 
-            # Add auto mode check here if implemented in frontend
+            # Check if auto mode is enabled
+            if not getattr(item, 'auto_mode', True):  # Default to True for backward compatibility
+                continue
+                
             new_value = random.uniform(item.min_value, item.max_value)
             telemetry_items[item_id].value = round(new_value, 2)
             scaled_value = int(new_value / item.scale_factor)

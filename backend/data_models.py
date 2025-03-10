@@ -35,7 +35,8 @@ class TelemetryItem(BaseModel):
     scale_factor: float
     min_value: float
     max_value: float
-    interval: int = 2    
+    interval: int = 2
+    auto_mode: bool = True    
 
 
     # Export all classes

@@ -468,21 +468,6 @@ export function ManageItemDialog({
                       {errors.valTelemetry && <p className="text-red-500 text-xs">{errors.valTelemetry}</p>}
                     </div>
 
-                    <div className="grid w-full items-center gap-1.5"></div>
-                    <Label htmlFor="scale-factor">Scale Factor</Label>
-                    <select
-                      id="scale-factor"
-                      className={`border rounded p-2 w-full ${errors.scaleFactor ? "border-red-500" : ""}`}
-                      value={scaleFactor}
-                      onChange={(e) => setScaleFactor(e.target.value)}
-                    >
-                      <option value="1">1</option>
-                      <option value="0.1">0.1</option>
-                      <option value="0.01">0.01</option>
-                      <option value="0.001">0.001</option>
-                    </select>
-                    {errors.scaleFactor && <p className="text-red-500 text-xs">{errors.scaleFactor}</p>}
-
                     <div className="grid w-full items-center gap-1.5">
                       <Label htmlFor="min-value">Min Value</Label>
                       <input
@@ -507,6 +492,22 @@ export function ManageItemDialog({
                         step="any"
                       />
                       {errors.maxValue && <p className="text-red-500 text-xs">{errors.maxValue}</p>}
+                    </div>
+
+                    <div className="grid w-full items-center gap-1.5">
+                      <Label htmlFor="scale-factor">Scale Factor</Label>
+                      <select
+                        id="scale-factor"
+                        className={`border rounded p-2 w-full ${errors.scaleFactor ? "border-red-500" : ""}`}
+                        value={scaleFactor}
+                        onChange={(e) => setScaleFactor(e.target.value)}
+                      >
+                        <option value="1">1</option>
+                        <option value="0.1">0.1</option>
+                        <option value="0.01">0.01</option>
+                        <option value="0.001">0.001</option>
+                      </select>
+                      {errors.scaleFactor && <p className="text-red-500 text-xs">{errors.scaleFactor}</p>}
                     </div>
 
                     {errors.range && <p className="text-red-500 text-xs">{errors.range}</p>}
