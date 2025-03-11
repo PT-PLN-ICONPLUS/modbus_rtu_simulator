@@ -233,7 +233,7 @@ async def simulate_values():
             new_value = random.randint(item.min_value, item.max_value)
             if new_value != item.value:
                 tele_signals[item_id].value = new_value
-                store.setValues(2, item.ioa, [new_value])
+                store.setValues(1, item.ioa, [new_value])
                 
                 # Record update time
                 last_update_times["tele_signals"][item_id] = current_time
