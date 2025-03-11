@@ -3,10 +3,11 @@ from typing import Dict
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import socketio
-from pymodbus.server import StartTcpServer
+from pymodbus.server import StartTcpServer, StartAsyncTcpServer
 from pymodbus.datastore import ModbusSlaveContext, ModbusServerContext
 from pymodbus.datastore import ModbusSequentialDataBlock
-import threading
+from pymodbus import FramerType
+from pymodbus.device import ModbusDeviceIdentification
 import random
 from dotenv import load_dotenv
 import os
@@ -16,6 +17,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from pydantic import BaseModel
 from data_models import CircuitBreakerItem, TeleSignalItem, TelemetryItem
+from pymodbus import __version__ as pymodbus_version
 
 # Configure logging
 logging.basicConfig(
@@ -49,10 +51,10 @@ telemetry_items: Dict[str, TelemetryItem] = {}
 
 # Initialize MODBUS Data Store with sufficient space
 store = ModbusSlaveContext(
-    di=ModbusSequentialDataBlock(0, [0] * 10000),  # Discrete Inputs
-    co=ModbusSequentialDataBlock(0, [0] * 10000),  # Coil Statuses
-    hr=ModbusSequentialDataBlock(0, [0] * 20000),  # Holding Registers
-    ir=ModbusSequentialDataBlock(0, [0] * 10000),  # Input Registers
+    di=ModbusSequentialDataBlock(0, [0] * 1000),  # Discrete Inputs
+    co=ModbusSequentialDataBlock(0, [0] * 1000),  # Coil Statuses
+    hr=ModbusSequentialDataBlock(0, [0] * 2000),  # Holding Registers
+    ir=ModbusSequentialDataBlock(0, [0] * 2000),  # Input Registers
 )
 context = ModbusServerContext(slaves=store, single=True)
 
@@ -96,7 +98,7 @@ async def add_tele_signal(sid, data):
     item = TeleSignalItem(**data)
     tele_signals[item.id] = item
     # Update Modbus register with initial state
-    store.setValues(2, item.ioa, [item.value])  # Discrete input
+    store.setValues(1, item.ioa, [item.value])  # Discrete input
     logger.info(f"Added telesignal: {item.name} with IOA {item.ioa}")
     await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()])
     return {"status": "success", "message": f"Added telesignal {item.name}"}
@@ -115,7 +117,7 @@ async def update_telesignal(sid, data):
             if 'value' in data:
                 new_value = data['value']
                 tele_signals[item_id].value = new_value
-                store.setValues(2, item.ioa, [new_value])
+                store.setValues(1, item.ioa, [new_value])
             
             logger.info(f"Updated telesignal: {item.name} (IOA: {item.ioa})")
             await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()])
@@ -267,17 +269,34 @@ async def simulate_values():
             
         # Use a shorter sleep time to check more frequently, but not burn CPU
         await asyncio.sleep(0.1)
+        
+device = ModbusDeviceIdentification(
+        info_name={
+            "VendorName": "Pymodbus",
+            "ProductCode": "PM",
+            "VendorUrl": "https://github.com/pymodbus-dev/pymodbus/",
+            "ProductName": "Pymodbus Server",
+            "ModelName": "Pymodbus Server",
+            "MajorMinorRevision": pymodbus_version,
+        }
+    )
 
 # Start the MODBUS server
-def start_modbus_server():
-    StartTcpServer(context, address=(MODBUS_HOST, MODBUS_PORT))
+async def start_modbus_server():
+    await StartAsyncTcpServer(
+            context=context, 
+            address=(MODBUS_HOST, MODBUS_PORT),
+            framer=FramerType.SOCKET,
+            identity=device,
+            broadcast_enable=True
+        )
 
 # Lifespan event handler
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup code
-    modbus_thread = threading.Thread(target=start_modbus_server, daemon=True)
-    modbus_thread.start()
+    # Start Modbus server using asyncio instead of threading
+    modbus_task = asyncio.create_task(start_modbus_server())
     logger.info(f"Started MODBUS TCP Server on {MODBUS_HOST}:{MODBUS_PORT}")
 
     # Start the Socket.IO update task
