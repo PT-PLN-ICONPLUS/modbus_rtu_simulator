@@ -20,18 +20,21 @@ function TeleSignal({ name = "Test", ioa = 117, value = 0 }: TeleSignalProps) {
   useEffect(() => {
     socket.emit('update_telesignal', {
       ioa,
-      auto_mode: isAuto
+      auto_mode: isAuto,
+      value: isOn ? 1 : 0
     });
-  }, [isAuto, ioa]);
+  }, [isAuto, ioa, isOn]);
 
   const toggleValue = () => {
     const newValue = isOn ? 0 : 1;
     setIsOn(!isOn);
 
-    socket.emit('update_telesignal', {
-      ioa,
-      value: newValue
-    });
+    if (!isAuto) {
+      socket.emit('update_telesignal', {
+        ioa,
+        value: newValue
+      });
+    }
   };
 
   return (
