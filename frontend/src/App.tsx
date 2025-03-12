@@ -5,44 +5,7 @@ import { SectionTitle } from './components/SectionTitleItem';
 import { CircuitBreaker } from './components/CircuitBreakerItem';
 import { TeleSignal } from './components/TeleSignalItem';
 import { Telemetry } from './components/TeleMetryItem';
-
-interface CircuitBreakerItem {
-  id: string;
-  name: string;
-  ioa_data: number;
-  ioa_data_dp?: number;
-  ioa_command: number;
-  ioa_command_dp?: number;
-  is_sbo: boolean;
-  is_double_point: boolean;
-  remote: boolean;
-  value: number;
-  min_value: number;
-  max_value: number;
-  interval: number;
-}
-
-interface TeleSignalItem {
-  id: string;
-  name: string;
-  ioa: number; // address
-  value: number; // 0 is off, 1 is on
-  min_value: number;
-  max_value: number;
-  interval: number;
-}
-
-interface TelemetryItem {
-  id: string;
-  name: string;
-  ioa: number; // address
-  unit: string;
-  value: number;
-  scale_factor: number;
-  min_value: number;
-  max_value: number;
-  interval: number;
-}
+import { CircuitBreakerItem, TeleSignalItem, TelemetryItem } from './lib/items';
 
 function App() {
   const [circuitBreakers, setCircuitBreakers] = useState<CircuitBreakerItem[]>([
@@ -55,7 +18,7 @@ function App() {
       ioa_command_dp: 5702,
       is_sbo: false,
       is_double_point: false,
-      remote: false,
+      remote: 0,
       value: 0,
       min_value: 0,
       max_value: 3,
@@ -114,27 +77,24 @@ function App() {
 
   const addCircuitBreaker = (data: {
     name: string;
-    ioa_data: number;
-    ioa_data_dp?: number;
-    ioa_command: number;
-    ioa_command_dp?: number;
+    ioa_cb_status: number;
+    ioa_cb_status_dp?: number;
     is_sbo: boolean;
     is_double_point: boolean;
+    remote: number;
     interval: number;
   }) => {
     const newItem: CircuitBreakerItem = {
       id: Date.now().toString(),
       name: data.name,
-      ioa_data: data.ioa_data,
-      ioa_data_dp: data.ioa_data_dp,
-      ioa_command: data.ioa_command,
-      ioa_command_dp: data.ioa_command_dp,
+      ioa_cb_status: data.ioa_cb_status,
+      ioa_cb_status_dp: data.ioa_cb_status_dp,
       is_sbo: data.is_sbo,
       is_double_point: data.is_double_point,
-      remote: false,
+      remote: data.remote,
       value: 0,
       min_value: 0,
-      max_value: data.is_double_point ? 3 : 2,
+      max_value: 3,
       interval: data.interval
     };
 
@@ -241,10 +201,10 @@ function App() {
             <CircuitBreaker
               key={item.id}
               name={item.name}
-              ioa_data={item.ioa_data}
-              ioa_data_dp={item.ioa_data_dp}
-              ioa_command={item.ioa_command}
-              ioa_command_dp={item.ioa_command_dp}
+              ioa_cb_status={item.ioa_cb_status}
+              ioa_cb_status_dp={item.ioa_cb_status_dp}
+              remote={item.remote}
+              value={item.value}
               is_sbo={item.is_sbo}
               is_double_point={item.is_double_point}
               interval={item.interval}

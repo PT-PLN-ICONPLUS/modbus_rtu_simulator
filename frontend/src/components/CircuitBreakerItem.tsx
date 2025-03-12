@@ -5,10 +5,9 @@ import { Switch } from "./ui/switch";
 
 interface CircuitBreakerProps {
   name?: string;
-  ioa_data?: number;
-  ioa_data_dp?: number;
-  ioa_command?: number;
-  ioa_command_dp?: number;
+  ioa_cb_status?: number;
+  ioa_cb_status_dp?: number;
+  remote?: number;
   is_sbo?: boolean;
   is_double_point?: boolean;
   is_mode_double_point?: boolean;
@@ -18,10 +17,9 @@ interface CircuitBreakerProps {
 
 function CircuitBreaker({
   name = "Circuit Breaker",
-  ioa_data = 0,
-  ioa_data_dp,
-  ioa_command = 5700,
-  ioa_command_dp,
+  ioa_cb_status = 0,
+  ioa_cb_status_dp = 0,
+  remote = 0,
   is_sbo = false,
   is_double_point = false,
   is_mode_double_point = false,
@@ -125,15 +123,14 @@ function CircuitBreaker({
             <p className="font-bold">{name}</p>
             {isDP ? (
               <>
-                <p className="">IOA Data DP: {ioa_data_dp}</p>
-                <p className="">IOA Command DP: {ioa_command_dp}</p>
+                <p className="">IOA CB Status DP: {ioa_cb_status_dp}</p>
               </>
             ) : (
               <>
-                <p className="">IOA Data: {ioa_data}</p>
-                <p className="">IOA Command: {ioa_command}</p>
+                <p className="">IOA CB Status: {ioa_cb_status}</p>
               </>
             )}
+            <p className="">  </p>
             <p className="">SBO: {isSBO ? "True" : "False"}</p>
             <p className="">Type: {isDP ? "Double" : "Single"} Point Command</p>
           </div>
@@ -164,7 +161,7 @@ function CircuitBreaker({
           <div className="flex flex-row gap-4 items-center">
             <span className={`font-bold ${isLocal ? 'text-red-500' : ''}`}>Local</span>
             <Switch
-              id={`location-mode-${ioa_data}`}
+              id={`location-mode-${remote}`}
               checked={!isLocal}
               onCheckedChange={(checked) => setIsLocal(!checked)}
             />

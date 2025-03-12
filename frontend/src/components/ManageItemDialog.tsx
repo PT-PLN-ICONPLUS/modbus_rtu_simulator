@@ -12,38 +12,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Toaster } from "./ui/sonner";
 import { toast } from "sonner";
-
-export interface CircuitBreakerItem {
-  id: string;
-  name: string;
-  ioa_data: number;
-  ioa_data_dp?: number;
-  ioa_command: number;
-  ioa_command_dp?: number;
-  is_sbo: boolean;
-  is_double_point: boolean;
-  value: number;
-}
-
-export interface TeleSignalItem {
-  id: string;
-  name: string;
-  ioa: number;
-  value: number;
-}
-
-export interface TelemetryItem {
-  id: string;
-  name: string;
-  ioa: number;
-  unit: string;
-  value: number;
-  scale_factor: number;
-  min_value: number;
-  max_value: number;
-}
-
-export type Item = CircuitBreakerItem | TeleSignalItem | TelemetryItem;
+import { Item } from "@/lib/items";
 
 type ManageItemDialogProps = {
   isOpen: boolean;
@@ -71,11 +40,11 @@ export function ManageItemDialog({
   const [selectedItem, setSelectedItem] = useState("");
 
   // Circuit breaker fields
-  const [isSBO, setIsSBO] = useState("false");
+  const [ioaControlOpen, setIOAControlOpen] = useState("");
+  const [ioaControlClose, setIOAControlClose] = useState("");
+  const [ioaLocalRemote, setIOALocalRemote] = useState("");
   const [isDoublePoint, setIsDoublePoint] = useState("false");
-  const [commandAddress, setCommandAddress] = useState("");
   const [addressDP, setAddressDP] = useState("");
-  const [commandAddressDP, setCommandAddressDP] = useState("");
 
   // Telesignal fields
   const [valTelesignal, setValTelesignal] = useState("");
@@ -103,11 +72,11 @@ export function ManageItemDialog({
       setAddress("");
       setInterval("5");
       setSelectedItem("");
-      setIsSBO("false");
+      setIOAControlOpen("");
+      setIOAControlClose("");
+      setIOALocalRemote("");
       setIsDoublePoint("false");
-      setCommandAddress("");
       setAddressDP("");
-      setCommandAddressDP("");
       setUnit("");
       setMinValue("");
       setMaxValue("");
@@ -139,27 +108,27 @@ export function ManageItemDialog({
     }
 
     if (!address) {
-      newErrors.address = "Address is required";
+      newErrors.address = "Address/IOA is required";
     } else if (isNaN(Number(address))) {
-      newErrors.address = "Address must be a number";
+      newErrors.address = "Address/IOA must be a number";
     } else if (
       action === "add" &&
       itemType === "Circuit Breakers" &&
-      items.some((item: any) => item.ioa_data === Number(address))
+      items.some((item: any) => item.ioa_cb_status === Number(address))
     ) {
-      newErrors.address = "Address already in use";
+      newErrors.address = "Address/IOA already in use";
     } else if (
       action === "add" &&
       itemType === "Telesignals" &&
       items.some((item: any) => item.ioa === Number(address))
     ) {
-      newErrors.address = "Address already in use";
+      newErrors.address = "Address/IOA already in use";
     } else if (
       action === "add" &&
       itemType === "Telemetry" &&
       items.some((item: any) => item.ioa === Number(address))
     ) {
-      newErrors.address = "Address already in use";
+      newErrors.address = "Address/IOA already in use";
     }
 
     if (!interval || isNaN(Number(interval)) || Number(interval) <= 0) {
@@ -168,38 +137,49 @@ export function ManageItemDialog({
 
     // Circuit breaker specific validations
     if (itemType === "Circuit Breakers") {
-      if (!commandAddress) {
-        newErrors.commandAddress = "Command address is required";
-      } else if (isNaN(Number(commandAddress))) {
-        newErrors.commandAddress = "Command address must be a number";
+      if (!ioaControlOpen) {
+        newErrors.ioaControlOpen = "IOA Control Open is required";
+      } else if (isNaN(Number(ioaControlOpen))) {
+        newErrors.ioaControlOpen = "IOA Control Open must be a number";
       } else if (
         action === "add" &&
-        items.some((item: any) => item.ioa_command === Number(commandAddress))
+        items.some((item: any) => item.ioa_control_open === Number(ioaControlOpen))
       ) {
-        newErrors.commandAddress = "Command address already in use";
+        newErrors.ioaControlOpen = "IOA Control Open already in use";
+      }
+
+      if (!ioaControlClose) {
+        newErrors.ioaControlClose = "IOA Control Close is required";
+      } else if (isNaN(Number(ioaControlClose))) {
+        newErrors.ioaControlClose = "IOA Control Close must be a number";
+      } else if (
+        action === "add" &&
+        items.some((item: any) => item.ioa_control_close === Number(ioaControlClose))
+      ) {
+        newErrors.ioaControlClose = "IOA Control Close already in use";
+      }
+
+      if (!ioaLocalRemote) {
+        newErrors.ioaLocalRemote = "IOA Local Remote is required";
+      } else if (isNaN(Number(ioaLocalRemote))) {
+        newErrors.ioaLocalRemote = "IOA Local Remote must be a number";
+      } else if (
+        action === "add" &&
+        items.some((item: any) => item.ioa_local_remote === Number(ioaLocalRemote))
+      ) {
+        newErrors.ioaLocalRemote = "IOA Local Remote already in use";
       }
 
       if (isDoublePoint === "true") {
         if (!addressDP) {
-          newErrors.addressDP = "Double point address is required";
+          newErrors.addressDP = "Double point address/IOA is required";
         } else if (isNaN(Number(addressDP))) {
-          newErrors.addressDP = "Double point address must be a number";
+          newErrors.addressDP = "Double point address/IOA must be a number";
         } else if (
           action === "add" &&
           items.some((item: any) => item.ioa_data_dp === Number(addressDP))
         ) {
-          newErrors.addressDP = "Double point address already in use";
-        }
-
-        if (!commandAddressDP) {
-          newErrors.commandAddressDP = "Double point command address is required";
-        } else if (isNaN(Number(commandAddressDP))) {
-          newErrors.commandAddressDP = "Double point command address must be a number";
-        } else if (
-          action === "add" &&
-          items.some((item: any) => item.ioa_command_dp === Number(commandAddressDP))
-        ) {
-          newErrors.commandAddressDP = "Double point command address already in use";
+          newErrors.addressDP = "Double point address/IOA already in use";
         }
       }
     }
@@ -249,14 +229,13 @@ export function ManageItemDialog({
         const isDP = isDoublePoint === "true";
         onSubmit({
           name,
-          ioa_data: parseInt(address),
-          ioa_data_dp: isDP ? parseInt(addressDP) : undefined,
-          ioa_command: parseInt(commandAddress),
-          ioa_command_dp: isDP ? parseInt(commandAddressDP) : undefined,
-          is_sbo: isSBO === "true",
+          ioa_cb_status: parseInt(address),
+          ioa_control_open: parseInt(ioaControlOpen),
+          ioa_control_close: parseInt(ioaControlClose),
+          ioa_local_remote: parseInt(ioaLocalRemote),
           is_double_point: isDP,
+          ioa_cb_status_dp: isDP ? parseInt(addressDP) : undefined,
           interval: parseInt(interval),
-          value: 0,
         });
       } else if (itemType === "Telesignals") {
         onSubmit({
@@ -323,7 +302,7 @@ export function ManageItemDialog({
 
                 <div className="grid w-full items-center gap-1.5">
                   <Label htmlFor="address">
-                    {itemType === "Circuit Breakers" ? "Data Address/IOA" : "Address/IOA"}
+                    {itemType === "Circuit Breakers" ? "IOA CB Status" : "Address/IOA"}
                   </Label>
                   <input
                     type="number"
@@ -338,17 +317,44 @@ export function ManageItemDialog({
                 {itemType === "Circuit Breakers" && (
                   <>
                     <div className="grid w-full items-center gap-1.5">
-                      <Label htmlFor="address-command">Command Address/IOA</Label>
+                      <Label htmlFor="ioaControlOpen">
+                        IOA Control Open
+                      </Label>
                       <input
                         type="number"
-                        id="address-command"
-                        className={`border rounded p-2 w-full ${errors.commandAddress ? "border-red-500" : ""}`}
-                        value={commandAddress}
-                        onChange={(e) => setCommandAddress(e.target.value)}
+                        id="ioaControlOpen"
+                        className={`border rounded p-2 w-full ${errors.ioaControlOpen ? "border-red-500" : ""}`}
+                        value={ioaControlOpen}
+                        onChange={(e) => setIOAControlOpen(e.target.value)}
                       />
-                      {errors.commandAddress && <p className="text-red-500 text-xs">{errors.commandAddress}</p>}
+                      {errors.ioaControlOpen && <p className="text-red-500 text-xs">{errors.ioaControlOpen}</p>}
                     </div>
-
+                    <div className="grid w-full items-center gap-1.5">
+                      <Label htmlFor="ioaControlClose">
+                        IOA Control Close
+                      </Label>
+                      <input
+                        type="number"
+                        id="ioaControlClose"
+                        className={`border rounded p-2 w-full ${errors.ioaControlClose ? "border-red-500" : ""}`}
+                        value={ioaControlClose}
+                        onChange={(e) => setIOAControlClose(e.target.value)}
+                      />
+                      {errors.ioaControlClose && <p className="text-red-500 text-xs">{errors.ioaControlClose}</p>}
+                    </div>
+                    <div className="grid w-full items-center gap-1.5">
+                      <Label htmlFor="ioaLocalRemote">
+                        IOA Local/Remote
+                      </Label>
+                      <input
+                        type="number"
+                        id="ioaLocalRemote"
+                        className={`border rounded p-2 w-full ${errors.ioaLocalRemote ? "border-red-500" : ""}`}
+                        value={ioaLocalRemote}
+                        onChange={(e) => setIOALocalRemote(e.target.value)}
+                      />
+                      {errors.ioaLocalRemote && <p className="text-red-500 text-xs">{errors.ioaLocalRemote}</p>}
+                    </div>
                     <div className="grid w-full items-center gap-1.5">
                       <Label>Double Point</Label>
                       <RadioGroup
@@ -368,31 +374,10 @@ export function ManageItemDialog({
                         </div>
                       </RadioGroup>
                     </div>
-
-                    <div className="grid w-full items-center gap-1.5">
-                      <Label htmlFor="is-sbo">SBO</Label>
-                      <RadioGroup
-                        value={isSBO}
-                        onValueChange={setIsSBO}
-                        defaultValue="false"
-                      >
-                        <div className="flex flex-row gap-6">
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="true" id="sbo-yes" />
-                            <Label htmlFor="sbo-yes">Yes</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="false" id="sbo-no" />
-                            <Label htmlFor="sbo-no">No</Label>
-                          </div>
-                        </div>
-                      </RadioGroup>
-                    </div>
-
                     {isDoublePoint === "true" && (
                       <>
                         <div className="grid w-full items-center gap-1.5">
-                          <Label htmlFor="address-dp">Double Point Address/IOA</Label>
+                          <Label htmlFor="address-dp">IOA CB Status Double Point</Label>
                           <input
                             type="number"
                             id="address-dp"
@@ -401,18 +386,6 @@ export function ManageItemDialog({
                             onChange={(e) => setAddressDP(e.target.value)}
                           />
                           {errors.addressDP && <p className="text-red-500 text-xs">{errors.addressDP}</p>}
-                        </div>
-
-                        <div className="grid w-full items-center gap-1.5">
-                          <Label htmlFor="address-command-dp">Double Point Command Address/IOA</Label>
-                          <input
-                            type="number"
-                            id="address-command-dp"
-                            className={`border rounded p-2 w-full ${errors.commandAddressDP ? "border-red-500" : ""}`}
-                            value={commandAddressDP}
-                            onChange={(e) => setCommandAddressDP(e.target.value)}
-                          />
-                          {errors.commandAddressDP && <p className="text-red-500 text-xs">{errors.commandAddressDP}</p>}
                         </div>
                       </>
                     )}
