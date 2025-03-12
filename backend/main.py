@@ -76,9 +76,9 @@ async def add_circuit_breaker(sid, data):
     item = CircuitBreakerItem(**data)
     circuit_breakers[item.id] = item
     # Update Modbus register with initial state
-    store.setValues(1, item.ioa_data, [item.value])
+    store.setValues(1, item.ioa_data - 1, [item.value])
     if item.is_double_point and item.ioa_data_dp:
-        store.setValues(1, item.ioa_data_dp, [item.value])
+        store.setValues(1, item.ioa_data_dp - 1, [item.value])
     logger.info(f"Added circuit breaker: {item.name} with IOA {item.ioa_data}")
     await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
     return {"status": "success", "message": f"Added circuit breaker {item.name}"}
@@ -98,7 +98,7 @@ async def add_tele_signal(sid, data):
     item = TeleSignalItem(**data)
     tele_signals[item.id] = item
     # Update Modbus register with initial state
-    store.setValues(1, item.ioa, [item.value])  # Discrete input
+    store.setValues(1, item.ioa - 1, [item.value])  # Discrete input
     logger.info(f"Added telesignal: {item.name} with IOA {item.ioa}")
     await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()])
     return {"status": "success", "message": f"Added telesignal {item.name}"}
@@ -117,7 +117,7 @@ async def update_telesignal(sid, data):
             if 'value' in data:
                 new_value = data['value']
                 tele_signals[item_id].value = new_value
-                store.setValues(1, item.ioa, [new_value])
+                store.setValues(1, item.ioa - 1, [new_value])
             
             logger.info(f"Updated telesignal: {item.name} (IOA: {item.ioa})")
             await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()])
@@ -142,7 +142,7 @@ async def add_telemetry(sid, data):
     # Update Modbus register with initial state
     # Scale value as needed for integer representation
     scaled_value = int(item.value / item.scale_factor)
-    store.setValues(3, item.ioa, [scaled_value])  # Holding register
+    store.setValues(3, item.ioa - 1, [scaled_value])  # Holding register
     logger.info(f"Added telemetry: {item.name} with IOA {item.ioa}")
     await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()])
     return {"status": "success", "message": f"Added telemetry {item.name}"}
@@ -164,7 +164,7 @@ async def update_telemetry(sid, data):
                 new_value = data['value']
                 telemetry_items[item_id].value = new_value
                 scaled_value = int(new_value / item.scale_factor)
-                store.setValues(3, item.ioa, [scaled_value])
+                store.setValues(3, item.ioa - 1, [scaled_value])
                 logger.info(f"Updated telemetry value to {new_value} for: {item.name} (IOA: {item.ioa})")
             
             await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()])
@@ -211,9 +211,9 @@ async def simulate_values():
             new_value = random.randint(item.min_value, item.max_value)
             if new_value != item.value:
                 circuit_breakers[item_id].value = new_value
-                store.setValues(1, item.ioa_data, [new_value])
+                store.setValues(1, item.ioa_data - 1, [new_value])
                 if item.is_double_point and item.ioa_data_dp:
-                    store.setValues(1, item.ioa_data_dp, [new_value >> 1])
+                    store.setValues(1, item.ioa_data_dp - 1, [new_value >> 1])
                     
                 # Record update time
                 last_update_times["circuit_breakers"][item_id] = current_time
@@ -233,7 +233,7 @@ async def simulate_values():
             new_value = random.randint(item.min_value, item.max_value)
             if new_value != item.value:
                 tele_signals[item_id].value = new_value
-                store.setValues(1, item.ioa, [new_value])
+                store.setValues(1, item.ioa - 1, [new_value])
                 
                 # Record update time
                 last_update_times["tele_signals"][item_id] = current_time
@@ -253,7 +253,7 @@ async def simulate_values():
             new_value = random.uniform(item.min_value, item.max_value)
             telemetry_items[item_id].value = round(new_value, 2)
             scaled_value = int(new_value / item.scale_factor)
-            store.setValues(3, item.ioa, [scaled_value])
+            store.setValues(3, item.ioa - 1, [scaled_value])
             
             # Record update time
             last_update_times["telemetry_items"][item_id] = current_time
