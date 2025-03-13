@@ -97,7 +97,46 @@ async def add_circuit_breaker(sid, data):
 
 @sio.event
 async def update_circuit_breaker(sid, data):
-    item_id = data.get('id')
+    ioa_cb_status = data.get('ioa_cb_status')
+    # Find the item by IOA
+    for item_id, item in list(circuit_breakers.items()):
+        if item.ioa_cb_status == ioa_cb_status:
+            # Update remote status if provided
+            if 'remote' in data:
+                circuit_breakers[item_id].remote = data['remote']
+                store.setValues(1, item.ioa_local_remote - 1, [data['remote']])
+                
+            # Update value if provided
+            if 'value' in data:
+                new_value = data['value']
+                circuit_breakers[item_id].value = new_value
+                # Update CB Status (Discrete Input)
+                store.setValues(2, item.ioa_cb_status - 1, [new_value])
+                
+                # Update Double Point Status if applicable
+                if item.is_double_point and item.ioa_cb_status_dp:
+                    store.setValues(4, item.ioa_cb_status_dp - 1, [new_value])
+                    
+            # Handle control commands
+            if 'control_open' in data:
+                store.setValues(1, item.ioa_control_open - 1, [data['control_open']])
+                
+            if 'control_close' in data:
+                store.setValues(1, item.ioa_control_close - 1, [data['control_close']])
+                
+            # Handle SBO mode update if provided
+            if 'is_sbo' in data:
+                circuit_breakers[item_id].is_sbo = data['is_sbo']
+                
+            # Handle double point mode update if provided
+            if 'is_double_point' in data:
+                circuit_breakers[item_id].is_double_point = data['is_double_point']
+            
+            logger.info(f"Updated circuit breaker: {item.name} (IOA: {item.ioa_cb_status})")
+            await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
+            return {"status": "success"}
+    
+    return {"status": "error", "message": "Circuit breaker not found"}
 
 @sio.event
 async def remove_circuit_breaker(sid, data):

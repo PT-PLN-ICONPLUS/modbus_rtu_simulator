@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
+import socket from "../socket";
 
 interface CircuitBreakerProps {
   name?: string;
@@ -41,10 +42,70 @@ function CircuitBreaker({
   const handleValueChange = (newValue: number) => {
     if (isLocal) {
       setValue(newValue);
+
+      // Determine control values based on the new state
+      let controlOpen = 0;
+      let controlClose = 0;
+
+      if (isDP) {
+        // Double point logic
+        if (newValue === 1) { // Open
+          controlOpen = 1;
+          controlClose = 0;
+        } else if (newValue === 2) { // Close
+          controlOpen = 0;
+          controlClose = 1;
+        }
+      } else {
+        // Single point logic
+        if (newValue === 1) { // Open
+          controlOpen = 1;
+          controlClose = 0;
+        } else if (newValue === 0) { // Close
+          controlOpen = 0;
+          controlClose = 1;
+        }
+      }
+
+      // Send to backend
+      socket.emit('update_circuit_breaker', {
+        ioa_cb_status: ioa_cb_status,
+        value: newValue,
+        control_open: controlOpen,
+        control_close: controlClose
+      });
+
       if (onValueChange) {
         onValueChange(newValue);
       }
     }
+  };
+
+  const toggleLocalRemote = (isRemote: boolean) => {
+    setIsLocal(!isRemote);
+
+    socket.emit('update_circuit_breaker', {
+      ioa_cb_status: ioa_cb_status,
+      remote: isRemote ? 1 : 0
+    });
+  };
+
+  const toggleSBO = (enabled: boolean) => {
+    setIsSBO(enabled);
+
+    socket.emit('update_circuit_breaker', {
+      ioa_cb_status: ioa_cb_status,
+      is_sbo: enabled
+    });
+  };
+
+  const toggleDP = (enabled: boolean) => {
+    setIsDP(enabled);
+
+    socket.emit('update_circuit_breaker', {
+      ioa_cb_status: ioa_cb_status,
+      is_double_point: enabled
+    });
   };
 
   return (
@@ -147,18 +208,16 @@ function CircuitBreaker({
           <div className="flex flex-row gap-4 text-white">
             <Button
               size="sm"
-              className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isSBO ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'
-                } ${!isLocal ? 'opacity-50' : ''}`}
-              onClick={() => isLocal && setIsSBO(!isSBO)}
+              className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isSBO ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${!isLocal ? 'opacity-50' : ''}`}
+              onClick={() => isLocal && toggleSBO(!isSBO)}
               disabled={!isLocal}
             >
               SBO
             </Button>
             <Button
               size="sm"
-              className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isDP ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'
-                } ${!isLocal ? 'opacity-50' : ''}`}
-              onClick={() => isLocal && setIsDP(!isDP)}
+              className={`border border-black text-xs hover:bg-blue-600 hover:text-white ${isDP ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'} ${!isLocal ? 'opacity-50' : ''}`}
+              onClick={() => isLocal && toggleDP(!isDP)}
               disabled={!isLocal || !is_double_point}
             >
               Double Point
@@ -171,7 +230,7 @@ function CircuitBreaker({
             <Switch
               id={`location-mode-${remote}`}
               checked={!isLocal}
-              onCheckedChange={(checked) => setIsLocal(!checked)}
+              onCheckedChange={(checked) => toggleLocalRemote(checked)}
             />
             <span className={`font-bold ${!isLocal ? 'text-red-500' : ''}`}>Remote</span>
           </div>
