@@ -12,11 +12,11 @@ function App() {
     {
       id: '1',
       name: 'Circuit Breaker 1',
-      ioa_cb_status: 1,
-      ioa_cb_status_dp: 2,
-      ioa_control_open: 5701,
-      ioa_control_close: 5702,
-      ioa_local_remote: 5703,
+      ioa_cb_status: 101,
+      ioa_cb_status_dp: 105,
+      ioa_control_open: 102,
+      ioa_control_close: 103,
+      ioa_local_remote: 104,
       is_sbo: false,
       is_double_point: false,
       remote: 0,
@@ -208,6 +208,9 @@ function App() {
               name={item.name}
               ioa_cb_status={item.ioa_cb_status}
               ioa_cb_status_dp={item.ioa_cb_status_dp}
+              ioa_control_open={item.ioa_control_open}
+              ioa_control_close={item.ioa_control_close}
+              ioa_local_remote={item.ioa_local_remote}
               remote={item.remote}
               is_sbo={item.is_sbo}
               is_double_point={item.is_double_point}

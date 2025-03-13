@@ -7,6 +7,9 @@ interface CircuitBreakerProps {
   name?: string;
   ioa_cb_status?: number;
   ioa_cb_status_dp?: number;
+  ioa_control_open?: number;
+  ioa_control_close?: number;
+  ioa_local_remote?: number;
   remote?: number;
   is_sbo?: boolean;
   is_double_point?: boolean;
@@ -19,6 +22,9 @@ function CircuitBreaker({
   name = "Circuit Breaker",
   ioa_cb_status = 0,
   ioa_cb_status_dp = 0,
+  ioa_control_open = 0,
+  ioa_control_close = 0,
+  ioa_local_remote = 0,
   remote = 0,
   is_sbo = false,
   is_double_point = false,
@@ -43,8 +49,8 @@ function CircuitBreaker({
 
   return (
     <div>
-      <div className="flex flex-row border-b-2">
-        <div className="flex flex-col my-2 mx-6">
+      <div className="flex flex-row border-b-2 py-2">
+        <div className="flex flex-col my-2 mx-6 gap-2">
           {/* Display lights */}
           <div className="flex flex-row">
             <div className="flex w-full justify-around gap-3">
@@ -81,7 +87,7 @@ function CircuitBreaker({
           </div>
 
           {/* Special operation buttons */}
-          <div className="flex flex-row justify-around gap-1 text-sm">
+          <div className="flex flex-row justify-around gap-2 text-sm">
             <Button
               size="sm"
               variant="outline"
@@ -130,7 +136,9 @@ function CircuitBreaker({
                 <p className="">IOA CB Status: {ioa_cb_status}</p>
               </>
             )}
-            <p className="">  </p>
+            <p className="">IOA Control Open: {ioa_control_open} </p>
+            <p className="">IOA Control Close: {ioa_control_close} </p>
+            <p className="">IOA Local/Remote: {ioa_local_remote}</p>
             <p className="">SBO: {isSBO ? "True" : "False"}</p>
             <p className="">Type: {isDP ? "Double" : "Single"} Point Command</p>
           </div>
