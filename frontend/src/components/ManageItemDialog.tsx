@@ -235,6 +235,7 @@ export function ManageItemDialog({
           ioa_local_remote: parseInt(ioaLocalRemote),
           is_double_point: isDP,
           ioa_cb_status_dp: isDP ? parseInt(addressDP) : undefined,
+          remote: 0,  // Default to local mode
           interval: parseInt(interval),
         });
       } else if (itemType === "Telesignals") {

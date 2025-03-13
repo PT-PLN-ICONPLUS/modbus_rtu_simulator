@@ -12,10 +12,11 @@ function App() {
     {
       id: '1',
       name: 'Circuit Breaker 1',
-      ioa_data: 1,
-      ioa_data_dp: 2,
-      ioa_command: 5701,
-      ioa_command_dp: 5702,
+      ioa_cb_status: 1,
+      ioa_cb_status_dp: 2,
+      ioa_control_open: 5701,
+      ioa_control_close: 5702,
+      ioa_local_remote: 5703,
       is_sbo: false,
       is_double_point: false,
       remote: 0,
@@ -79,9 +80,10 @@ function App() {
     name: string;
     ioa_cb_status: number;
     ioa_cb_status_dp?: number;
-    is_sbo: boolean;
+    ioa_control_open: number;
+    ioa_control_close: number;
+    ioa_local_remote: number;
     is_double_point: boolean;
-    remote: number;
     interval: number;
   }) => {
     const newItem: CircuitBreakerItem = {
@@ -89,16 +91,19 @@ function App() {
       name: data.name,
       ioa_cb_status: data.ioa_cb_status,
       ioa_cb_status_dp: data.ioa_cb_status_dp,
-      is_sbo: data.is_sbo,
+      ioa_control_open: data.ioa_control_open,
+      ioa_control_close: data.ioa_control_close,
+      ioa_local_remote: data.ioa_local_remote,
+      is_sbo: false,
       is_double_point: data.is_double_point,
-      remote: data.remote,
+      remote: 0,
       value: 0,
       min_value: 0,
       max_value: 3,
       interval: data.interval
     };
 
-    // Send to backend instead of just updating local state
+    // Send to backend
     if (socket) {
       socket.emit('add_circuit_breaker', newItem, (response: any) => {
         console.log('Add circuit breaker response:', response);
@@ -204,7 +209,6 @@ function App() {
               ioa_cb_status={item.ioa_cb_status}
               ioa_cb_status_dp={item.ioa_cb_status_dp}
               remote={item.remote}
-              value={item.value}
               is_sbo={item.is_sbo}
               is_double_point={item.is_double_point}
               interval={item.interval}

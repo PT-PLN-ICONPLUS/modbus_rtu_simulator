@@ -75,13 +75,29 @@ async def disconnect(sid):
 async def add_circuit_breaker(sid, data):
     item = CircuitBreakerItem(**data)
     circuit_breakers[item.id] = item
-    # Update Modbus register with initial state
-    store.setValues(1, item.ioa_data - 1, [item.value])
-    if item.is_double_point and item.ioa_data_dp:
-        store.setValues(1, item.ioa_data_dp - 1, [item.value])
-    logger.info(f"Added circuit breaker: {item.name} with IOA {item.ioa_data}")
+    
+    # Update Modbus registers with initial states
+    # 1. CB Status (Discrete Input) - Register type 1
+    store.setValues(2, item.ioa_cb_status - 1, [item.value])
+    
+    # 2. CB Status Double Point (Input Register) if enabled - Register type 3
+    if item.is_double_point and item.ioa_cb_status_dp:
+        store.setValues(4, item.ioa_cb_status_dp - 1, [item.value])
+    
+    # 3. Control Open/Close (Coils) - Register type 0
+    store.setValues(1, item.ioa_control_open - 1, [0])  # Initially off
+    store.setValues(1, item.ioa_control_close - 1, [0])  # Initially off
+    
+    # 4. Local/Remote (Coil) - Register type 0
+    store.setValues(1, item.ioa_local_remote - 1, [item.remote])
+    
+    logger.info(f"Added circuit breaker: {item.name} with IOA {item.ioa_cb_status}")
     await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
     return {"status": "success", "message": f"Added circuit breaker {item.name}"}
+
+@sio.event
+async def update_circuit_breaker(sid, data):
+    item_id = data.get('id')
 
 @sio.event
 async def remove_circuit_breaker(sid, data):
