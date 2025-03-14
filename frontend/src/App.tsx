@@ -8,50 +8,9 @@ import { Telemetry } from './components/TeleMetryItem';
 import { CircuitBreakerItem, TeleSignalItem, TelemetryItem } from './lib/items';
 
 function App() {
-  const [circuitBreakers, setCircuitBreakers] = useState<CircuitBreakerItem[]>([
-    {
-      id: '1',
-      name: 'Circuit Breaker 1',
-      ioa_cb_status: 101,
-      ioa_cb_status_dp: 105,
-      ioa_control_open: 102,
-      ioa_control_close: 103,
-      ioa_local_remote: 104,
-      is_sbo: false,
-      is_double_point: false,
-      remote: 0,
-      value: 0,
-      min_value: 0,
-      max_value: 3,
-      interval: 5
-    },
-  ]);
-
-  const [teleSignals, setTeleSignals] = useState<TeleSignalItem[]>([
-    {
-      id: '1',
-      name: 'TeleSignal 1',
-      ioa: 101,
-      value: 0,
-      min_value: 0,
-      max_value: 1,
-      interval: 10
-    },
-  ]);
-
-  const [telemetry, setTelemetry] = useState<TelemetryItem[]>([
-    {
-      id: '1',
-      name: 'Voltage',
-      ioa: 201,
-      unit: 'V',
-      value: 220,
-      scale_factor: 1,
-      min_value: 200,
-      max_value: 240,
-      interval: 2
-    },
-  ]);
+  const [circuitBreakers, setCircuitBreakers] = useState<CircuitBreakerItem[]>([]);
+  const [teleSignals, setTeleSignals] = useState<TeleSignalItem[]>([]);
+  const [telemetry, setTelemetry] = useState<TelemetryItem[]>([]);
 
   useEffect(() => {
     socket.on('circuit_breakers', (data: CircuitBreakerItem[]) => {
@@ -79,20 +38,25 @@ function App() {
   const addCircuitBreaker = (data: {
     name: string;
     ioa_cb_status: number;
+    ioa_cb_status_close: number;
     ioa_cb_status_dp?: number;
+    ioa_control_dp?: number;
     ioa_control_open: number;
     ioa_control_close: number;
     ioa_local_remote: number;
     is_double_point: boolean;
     interval: number;
+
   }) => {
     const newItem: CircuitBreakerItem = {
       id: Date.now().toString(),
       name: data.name,
       ioa_cb_status: data.ioa_cb_status,
-      ioa_cb_status_dp: data.ioa_cb_status_dp,
+      ioa_cb_status_close: data.ioa_cb_status_close,
       ioa_control_open: data.ioa_control_open,
       ioa_control_close: data.ioa_control_close,
+      ioa_cb_status_dp: data.ioa_cb_status_dp,
+      ioa_control_dp: data.ioa_control_dp,
       ioa_local_remote: data.ioa_local_remote,
       is_sbo: false,
       is_double_point: data.is_double_point,
@@ -207,7 +171,9 @@ function App() {
               key={item.id}
               name={item.name}
               ioa_cb_status={item.ioa_cb_status}
+              ioa_cb_status_close={item.ioa_cb_status_close}
               ioa_cb_status_dp={item.ioa_cb_status_dp}
+              ioa_control_dp={item.ioa_control_dp}
               ioa_control_open={item.ioa_control_open}
               ioa_control_close={item.ioa_control_close}
               ioa_local_remote={item.ioa_local_remote}

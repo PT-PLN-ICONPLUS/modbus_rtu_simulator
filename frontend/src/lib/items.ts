@@ -2,9 +2,11 @@ export interface CircuitBreakerItem {
   id: string;
   name: string;
   ioa_cb_status: number;
-  ioa_cb_status_dp?: number;
+  ioa_cb_status_close: number; 
   ioa_control_open: number;
   ioa_control_close: number;
+  ioa_cb_status_dp?: number;
+  ioa_control_dp?: number;
   ioa_local_remote: number;
   is_sbo: boolean;
   is_double_point: boolean;
