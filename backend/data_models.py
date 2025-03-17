@@ -19,6 +19,13 @@ class CircuitBreakerItem(BaseModel):
     max_value: int = 3
     interval: int = 5
     
+    cb_status_open: int = 0
+    cb_status_close: int = 0
+    cb_status_dp: int = 0
+    control_open: int = 0
+    control_close: int = 0
+    control_dp: int = 0
+    
 class TeleSignalItem(BaseModel):
     id: str
     name: str
