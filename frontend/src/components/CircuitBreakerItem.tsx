@@ -72,16 +72,14 @@ function CircuitBreaker({
         }
       } else {
         // Single point logic
-        if (newValue === 1) { // Open
-          set_cb_status_close(0);
+        if (newValue === 0) { // Open (value 0)
           set_cb_status_open(1);
-
+          set_cb_status_close(0);
           set_control_open(1);
           set_control_close(0);
-        } else if (newValue === 0) { // Close
-          set_cb_status_close(1);
+        } else if (newValue === 1) { // Close (value 1)
           set_cb_status_open(0);
-
+          set_cb_status_close(1);
           set_control_open(0);
           set_control_close(1);
         }
@@ -124,6 +122,26 @@ function CircuitBreaker({
   };
 
   const toggleDP = () => {
+    // Convert value between single point and double point formats
+    // while maintaining the logical state (open/closed)
+    if (isDP) {
+      // Converting from double point mode to single point mode
+      if (value === 1) { // DP Open -> SP Open (0)
+        setValue(0);
+      } else if (value === 2) { // DP Close -> SP Close (1)
+        setValue(1);
+      }
+      // For values 0 and 3 (invalid states in DP), 
+      // we'll keep them as 0 in single point
+    } else {
+      // Converting from single point mode to double point mode
+      if (value === 0) { // SP Open -> DP Open (1)
+        setValue(1);
+      } else if (value === 1) { // SP Close -> DP Close (2)
+        setValue(2);
+      }
+    }
+
     setIsDP(!isDP);
   };
 
@@ -135,11 +153,15 @@ function CircuitBreaker({
           <div className="flex flex-row">
             <div className="flex w-full justify-around gap-3">
               <div
-                className={`w-24 h-24 rounded-full border-2 border-green-600 ${value === 1 || value === 3 ? 'bg-green-600' : 'bg-green-200 opacity-50'
+                className={`w-24 h-24 rounded-full border-2 border-green-600 ${isDP
+                  ? (value === 1 || value === 3) ? 'bg-green-600' : 'bg-green-200 opacity-50'
+                  : value === 0 ? 'bg-green-600' : 'bg-green-200 opacity-50'
                   }`}
               ></div>
               <div
-                className={`w-24 h-24 rounded-full border-2 border-red-600 ${value === 2 || value === 3 ? 'bg-red-600' : 'bg-red-200 opacity-50'
+                className={`w-24 h-24 rounded-full border-2 border-red-600 ${isDP
+                  ? (value === 2 || value === 3) ? 'bg-red-600' : 'bg-red-200 opacity-50'
+                  : value === 1 ? 'bg-red-600' : 'bg-red-200 opacity-50'
                   }`}
               ></div>
             </div>

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, memo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,45 +13,6 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Toaster } from "./ui/sonner";
 import { toast } from "sonner";
 import { Item } from "@/lib/items";
-
-const FormField = memo(({
-  label,
-  id,
-  type = "text",
-  value,
-  onChange,
-  error,
-  children
-}: {
-  label: string;
-  id: string;
-  type?: string;
-  value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
-  error?: string;
-  children?: React.ReactNode;
-}) => (
-  <div className="flex items-start mb-4">
-    <Label htmlFor={id} className="w-1/3 pt-2 text-right pr-4">
-      {label}
-    </Label>
-    <div className="w-2/3">
-      {children || (
-        <input
-          type={type}
-          id={id}
-          className={`border rounded p-2 w-full ${error ? "border-red-500" : ""}`}
-          value={value}
-          onChange={onChange}
-          step={type === "number" ? "any" : undefined}
-        />
-      )}
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-    </div>
-  </div>
-));
-
-FormField.displayName = 'FormField';
 
 type ManageItemDialogProps = {
   isOpen: boolean;
@@ -126,7 +87,7 @@ export function ManageItemDialog({
       setErrors({});
       setValTelemetry("");
     }
-  }, [isOpen]);
+  }, [isOpen, minValue, maxValue]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -237,6 +198,8 @@ export function ManageItemDialog({
           newErrors.controlDP = "Control Double Point address must be a number";
         }
       }
+
+
     }
 
     // Telemetry specific validations
@@ -326,194 +289,238 @@ export function ManageItemDialog({
     <>
       <Toaster />
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent aria-describedby={undefined} className="max-w-lg">
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="py-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {action === "add" ? (
               <>
-                <FormField
-                  label="Name"
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  error={errors.name}
-                />
+                <div className="flex w-full items-center gap-1.5">
+                  <Label htmlFor="name" className="w-1/3">Name</Label>
+                  <input
+                    type="text"
+                    id="name"
+                    className={`w-2/3 border rounded p-2 ${errors.name ? "border-red-500" : ""}`}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                  {errors.name && <p className="text-red-500 text-xs">{errors.name}</p>}
+                </div>
 
-                <FormField
-                  label="Interval (s)"
-                  id="interval"
-                  type="number"
-                  value={interval}
-                  onChange={(e) => setInterval(e.target.value)}
-                  error={errors.interval}
-                />
+                <div className="flex w-full items-center gap-1.5">
+                  <Label htmlFor="interval" className="w-1/3">Interval (s)</Label>
+                  <input
+                    type="number"
+                    id="interval"
+                    className={`border rounded p-2 w-2/3 ${errors.interval ? "border-red-500" : ""}`}
+                    value={interval}
+                    onChange={(e) => setInterval(e.target.value)}
+                  />
+                  {errors.interval && <p className="text-red-500 text-xs">{errors.interval}</p>}
+                </div>
 
-                <FormField
-                  label={itemType === "Circuit Breakers" ? "IOA CB Status Open" : "Address/IOA"}
-                  id="address"
-                  type="number"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  error={errors.address}
-                />
+                <div className="flex w-full items-center gap-1.5">
+                  <Label htmlFor="address" className="w-1/3">
+                    {itemType === "Circuit Breakers" ? "IOA CB Status Open" : "Address/IOA"}
+                  </Label>
+                  <input
+                    type="number"
+                    id="address"
+                    className={`border rounded p-2 w-2/3 ${errors.address ? "border-red-500" : ""}`}
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                  />
+                  {errors.address && <p className="text-red-500 text-xs">{errors.address}</p>}
+                </div>
 
                 {itemType === "Circuit Breakers" && (
                   <>
+                    <div className="flex w-full items-center gap-1.5">
+                      <Label htmlFor="ioaControlOpen" className="w-1/3">
+                        IOA Control Open
+                      </Label>
+                      <input
+                        type="number"
+                        id="ioaControlOpen"
+                        className={`border rounded p-2 w-2/3 ${errors.ioaControlOpen ? "border-red-500" : ""}`}
+                        value={ioaControlOpen}
+                        onChange={(e) => setIOAControlOpen(e.target.value)}
+                      />
+                      {errors.ioaControlOpen && <p className="text-red-500 text-xs">{errors.ioaControlOpen}</p>}
+                    </div>
 
-                    <FormField
-                      label="IOA CB Status Close"
-                      id="ioaCbStatusClose"
-                      type="number"
-                      value={ioaCbStatusClose}
-                      onChange={(e) => setIoaCbStatusClose(e.target.value)}
-                      error={errors.ioaCbStatusClose}
-                    />
+                    <div className="flex w-full items-center gap-1.5">
+                      <Label htmlFor="ioaControlClose" className="w-1/3">
+                        IOA Control Close
+                      </Label>
+                      <input
+                        type="number"
+                        id="ioaControlClose"
+                        className={`border rounded p-2 w-2/3 ${errors.ioaControlClose ? "border-red-500" : ""}`}
+                        value={ioaControlClose}
+                        onChange={(e) => setIOAControlClose(e.target.value)}
+                      />
+                      {errors.ioaControlClose && <p className="text-red-500 text-xs">{errors.ioaControlClose}</p>}
+                    </div>
 
-                    <FormField
-                      label="IOA Control Open"
-                      id="ioaControlOpen"
-                      type="number"
-                      value={ioaControlOpen}
-                      onChange={(e) => setIOAControlOpen(e.target.value)}
-                      error={errors.ioaControlOpen}
-                    />
+                    <div className="flex w-full items-center gap-1.5">
+                      <Label htmlFor="ioaLocalRemote" className="w-1/3">
+                        IOA Local/Remote
+                      </Label>
+                      <input
+                        type="number"
+                        id="ioaLocalRemote"
+                        className={`border rounded p-2 w-2/3 ${errors.ioaLocalRemote ? "border-red-500" : ""}`}
+                        value={ioaLocalRemote}
+                        onChange={(e) => setIOALocalRemote(e.target.value)}
+                      />
+                      {errors.ioaLocalRemote && <p className="text-red-500 text-xs">{errors.ioaLocalRemote}</p>}
+                    </div>
 
-                    <FormField
-                      label="IOA Control Close"
-                      id="ioaControlClose"
-                      type="number"
-                      value={ioaControlClose}
-                      onChange={(e) => setIOAControlClose(e.target.value)}
-                      error={errors.ioaControlClose}
-                    />
+                    <div className="flex w-full items-center gap-1.5">
+                      <Label htmlFor="ioaCbStatusClose" className="w-1/3">
+                        IOA CB Status Close
+                      </Label>
+                      <input
+                        type="number"
+                        id="ioaCbStatusClose"
+                        className={`border rounded p-2 w-2/3 ${errors.ioaCbStatusClose ? "border-red-500" : ""}`}
+                        value={ioaCbStatusClose}
+                        onChange={(e) => setIoaCbStatusClose(e.target.value)}
+                      />
+                      {errors.ioaCbStatusClose && <p className="text-red-500 text-xs">{errors.ioaCbStatusClose}</p>}
+                    </div>
 
-                    <FormField
-                      label="IOA Local/Remote"
-                      id="ioaLocalRemote"
-                      type="number"
-                      value={ioaLocalRemote}
-                      onChange={(e) => setIOALocalRemote(e.target.value)}
-                      error={errors.ioaLocalRemote}
-                    />
-
-                    <FormField
-                      label="Double Point"
-                      id="isDoublePoint"
-                      error={errors.isDoublePoint}
-                    >
+                    <div className="flex w-full items-center gap-1.5">
+                      <Label className="w-1/3">Double Point</Label>
                       <RadioGroup
                         value={isDoublePoint}
                         onValueChange={setIsDoublePoint}
                         defaultValue="false"
-                        className="flex flex-row gap-6 mt-2 mb-2"
                       >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="true" id="dp-yes" />
-                          <Label htmlFor="dp-yes">Yes</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="false" id="dp-no" />
-                          <Label htmlFor="dp-no">No</Label>
+                        <div className="flex flex-row gap-6">
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="true" id="dp-yes" />
+                            <Label htmlFor="dp-yes">Yes</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="false" id="dp-no" />
+                            <Label htmlFor="dp-no">No</Label>
+                          </div>
                         </div>
                       </RadioGroup>
-                    </FormField>
-
+                    </div>
                     {isDoublePoint === "true" && (
                       <>
-                        <FormField
-                          label="IOA CB Status DP"
-                          id="address-dp"
-                          type="number"
-                          value={addressDP}
-                          onChange={(e) => setAddressDP(e.target.value)}
-                          error={errors.addressDP}
-                        />
-
-                        <FormField
-                          label="IOA Control DP"
-                          id="control-dp"
-                          type="number"
-                          value={controlDP}
-                          onChange={(e) => setControlDP(e.target.value)}
-                          error={errors.controlDP}
-                        />
+                        <div className="flex w-full items-center gap-1.5">
+                          <Label htmlFor="address-dp" className="w-1/3">IOA CB Status Double Point</Label>
+                          <input
+                            type="number"
+                            id="address-dp"
+                            className={`border rounded p-2 w-2/3 ${errors.addressDP ? "border-red-500" : ""}`}
+                            value={addressDP}
+                            onChange={(e) => setAddressDP(e.target.value)}
+                          />
+                          {errors.addressDP && <p className="text-red-500 text-xs">{errors.addressDP}</p>}
+                        </div>
+                        <div className="flex w-full items-center gap-1.5">
+                          <Label htmlFor="control-dp" className="w-1/3">IOA Control Double Point</Label>
+                          <input
+                            type="number"
+                            id="control-dp"
+                            className={`border rounded p-2 w-2/3 ${errors.controlDP ? "border-red-500" : ""}`}
+                            value={controlDP}
+                            onChange={(e) => setControlDP(e.target.value)}
+                          />
+                          {errors.controlDP && <p className="text-red-500 text-xs">{errors.controlDP}</p>}
+                        </div>
                       </>
                     )}
                   </>
                 )}
 
                 {itemType === "Telesignals" && (
-                  <FormField
-                    label="Value"
-                    id="value_telesignal"
-                    error={errors.valTelesignal}
-                  >
+                  <div className="flex w-full items-center gap-1.5">
+                    <Label htmlFor="value_telesignal" className="w-1/3">Value</Label>
                     <RadioGroup
                       value={valTelesignal}
                       onValueChange={setValTelesignal}
                       defaultValue="0"
-                      className="flex flex-row gap-6 mt-2"
                     >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="1" id="on" />
-                        <Label htmlFor="on">ON</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="0" id="off" />
-                        <Label htmlFor="off">OFF</Label>
+                      <div className="flex flex-row gap-6">
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="1" id="on" />
+                          <Label htmlFor="on">ON</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="0" id="off" />
+                          <Label htmlFor="off">OFF</Label>
+                        </div>
                       </div>
                     </RadioGroup>
-                  </FormField>
+                    {errors.valTelesignal && <p className="text-red-500 text-xs">{errors.valTelesignal}</p>}
+                  </div>
                 )}
 
                 {itemType === "Telemetry" && (
                   <>
-                    <FormField
-                      label="Unit"
-                      id="unit"
-                      value={unit}
-                      onChange={(e) => setUnit(e.target.value)}
-                      error={errors.unit}
-                    />
+                    <div className="flex w-full items-center gap-1.5">
+                      <Label htmlFor="unit" className="w-1/3">Unit</Label>
+                      <input
+                        type="text"
+                        id="unit"
+                        className={`border rounded p-2 w-2/3 ${errors.unit ? "border-red-500" : ""}`}
+                        value={unit}
+                        onChange={(e) => setUnit(e.target.value)}
+                      />
+                      {errors.unit && <p className="text-red-500 text-xs">{errors.unit}</p>}
+                    </div>
 
-                    <FormField
-                      label="Value"
-                      id="value_telemetry"
-                      type="number"
-                      value={valTelemetry}
-                      onChange={(e) => setValTelemetry(e.target.value)}
-                      error={errors.valTelemetry}
-                    />
+                    <div className="flex w-full items-center gap-1.5">
+                      <Label htmlFor="value_telemetry" className="w-1/3">Value</Label>
+                      <input
+                        type="number"
+                        id="value_telemetry"
+                        className={`border rounded p-2 w-2/3 ${errors.unit ? "border-red-500" : ""}`}
+                        value={valTelemetry}
+                        onChange={(e) => setValTelemetry(e.target.value)}
+                      />
+                      {errors.valTelemetry && <p className="text-red-500 text-xs">{errors.valTelemetry}</p>}
+                    </div>
 
-                    <FormField
-                      label="Min Value"
-                      id="min-value"
-                      type="number"
-                      value={minValue}
-                      onChange={(e) => setMinValue(e.target.value)}
-                      error={errors.minValue}
-                    />
+                    <div className="flex w-full items-center gap-1.5">
+                      <Label htmlFor="min-value" className="w-1/3">Min Value</Label>
+                      <input
+                        type="number"
+                        id="min-value"
+                        className={`border rounded p-2 w-2/3 ${errors.minValue ? "border-red-500" : ""}`}
+                        value={minValue}
+                        onChange={(e) => setMinValue(e.target.value)}
+                        step="any"
+                      />
+                      {errors.minValue && <p className="text-red-500 text-xs">{errors.minValue}</p>}
+                    </div>
 
-                    <FormField
-                      label="Max Value"
-                      id="max-value"
-                      type="number"
-                      value={maxValue}
-                      onChange={(e) => setMaxValue(e.target.value)}
-                      error={errors.maxValue || errors.range}
-                    />
+                    <div className="flex w-full items-center gap-1.5">
+                      <Label htmlFor="max-value" className="w-1/3">Max Value</Label>
+                      <input
+                        type="number"
+                        id="max-value"
+                        className={`border rounded p-2 w-2/3 ${errors.maxValue ? "border-red-500" : ""}`}
+                        value={maxValue}
+                        onChange={(e) => setMaxValue(e.target.value)}
+                        step="any"
+                      />
+                      {errors.maxValue && <p className="text-red-500 text-xs">{errors.maxValue}</p>}
+                    </div>
 
-                    <FormField
-                      label="Scale Factor"
-                      id="scale-factor"
-                      error={errors.scaleFactor}
-                    >
+                    <div className="flex w-full items-center gap-1.5">
+                      <Label htmlFor="scale-factor" className="w-1/3">Scale Factor</Label>
                       <select
                         id="scale-factor"
-                        className={`border rounded p-2 w-full ${errors.scaleFactor ? "border-red-500" : ""}`}
+                        className={`border rounded p-2 w-2/3 ${errors.scaleFactor ? "border-red-500" : ""}`}
                         value={scaleFactor}
                         onChange={(e) => setScaleFactor(e.target.value)}
                       >
@@ -522,16 +529,16 @@ export function ManageItemDialog({
                         <option value="0.01">0.01</option>
                         <option value="0.001">0.001</option>
                       </select>
-                    </FormField>
+                      {errors.scaleFactor && <p className="text-red-500 text-xs">{errors.scaleFactor}</p>}
+                    </div>
+
+                    {errors.range && <p className="text-red-500 text-xs">{errors.range}</p>}
                   </>
                 )}
               </>
             ) : (
-              <FormField
-                label={`Select ${itemType}`}
-                id="item"
-                error={errors.selectedItem}
-              >
+              <div className="flex w-full items-center gap-1.5">
+                <Label htmlFor="item" className="w-1/3">Select {itemType} to remove</Label>
                 <select
                   id="item"
                   className={`border rounded p-2 w-full ${errors.selectedItem ? "border-red-500" : ""}`}
@@ -543,10 +550,11 @@ export function ManageItemDialog({
                     <option key={item.id} value={item.id}>{item.name}</option>
                   ))}
                 </select>
-              </FormField>
+                {errors.selectedItem && <p className="text-red-500 text-xs">{errors.selectedItem}</p>}
+              </div>
             )}
 
-            <DialogFooter className="mt-6">
+            <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
               <Button type="submit" variant={action === "add" ? "default" : "destructive"}>
                 {action === "add" ? "Add" : "Remove"}
