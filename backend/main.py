@@ -78,14 +78,14 @@ async def add_circuit_breaker(sid, data):
     
     # Update Modbus registers with initial states
     # 1. CB Status Single Open (Discrete Input) - Register type 2
-    store.setValues(2, item.ioa_cb_status - 1, [item.value == 1 or item.value == 3])
+    store.setValues(2, item.ioa_cb_status - 1, [False])
     
     # 2. CB Status Single Close (Discrete Input) - Register type 2
-    store.setValues(2, item.ioa_cb_status_close - 1, [item.value == 2 or item.value == 3])
+    store.setValues(2, item.ioa_cb_status_close - 1, [False])
     
     # 3. CB Status Double Point (Input Register) if enabled - Register type 4
     if item.is_double_point and item.ioa_cb_status_dp:
-        store.setValues(4, item.ioa_cb_status_dp - 1, [item.value])
+        store.setValues(4, item.ioa_cb_status_dp - 1, [0])
         # Control Double (Holding Register) if enabled
         store.setValues(3, item.ioa_control_dp - 1, [0])  # Initially off
     
@@ -96,7 +96,7 @@ async def add_circuit_breaker(sid, data):
     # 6. Local/Remote (Coil) - Register type 1
     store.setValues(1, item.ioa_local_remote - 1, [item.remote])
     
-    logger.info(f"Added circuit breaker: {item.name} with IOA {item.ioa_cb_status}")
+    logger.info(f"Added circuit breaker: {item.name} with IOA CB status open (for unique value): {item.ioa_cb_status}")
     await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
     return {"status": "success", "message": f"Added circuit breaker {item.name}"}
 
@@ -110,33 +110,30 @@ async def update_circuit_breaker(sid, data):
             if 'remote' in data:
                 circuit_breakers[item_id].remote = data['remote']
                 store.setValues(1, item.ioa_local_remote - 1, [data['remote']])
-                logger.info(f"Set remote status to {data['remote']} for circuit breaker: {item.name}")
                 
             # Update value if provided
-            if 'value' in data:
-                new_value = data['value']
-                circuit_breakers[item_id].value = new_value
+            if 'cb_status_open' in data:
+                circuit_breakers[item_id].cb_status_open = data['cb_status_open']
+                store.setValues(2, item.ioa_cb_status - 1, [data['cb_status_open']])
                 
-                # Update CB Status Single Open (Discrete Input)
-                store.setValues(2, item.ioa_cb_status - 1, [new_value == 1 or new_value == 3])
+            if 'cb_status_close' in data:
+                circuit_breakers[item_id].cb_status_close = data['cb_status_close']
+                store.setValues(2, item.ioa_cb_status_close - 1, [data['cb_status_close']])
                 
-                # Update CB Status Single Close (Discrete Input)
-                if hasattr(item, 'ioa_cb_status_close'):
-                    store.setValues(2, item.ioa_cb_status_close - 1, [new_value == 2 or new_value == 3])
+            if 'cb_status_dp' in data:
+                circuit_breakers[item_id].cb_status_dp = data['cb_status_dp']
+                store.setValues(4, item.ioa_cb_status_dp - 1, [data['cb_status_dp']])
                 
-                # Update Double Point Status if applicable
-                if item.is_double_point and item.ioa_cb_status_dp:
-                    store.setValues(4, item.ioa_cb_status_dp - 1, [new_value])
-                    
-            # Handle control commands
             if 'control_open' in data:
+                circuit_breakers[item_id].control_open = data['control_open']
                 store.setValues(1, item.ioa_control_open - 1, [data['control_open']])
                 
             if 'control_close' in data:
+                circuit_breakers[item_id].control_close = data['control_close']
                 store.setValues(1, item.ioa_control_close - 1, [data['control_close']])
                 
-            # Handle control double if applicable
-            if 'control_dp' in data and item.is_double_point and item.ioa_control_dp:
+            if 'control_dp' in data:
+                circuit_breakers[item_id].control_dp = data['control_dp']
                 store.setValues(3, item.ioa_control_dp - 1, [data['control_dp']])
                 
             # Handle SBO mode update if provided
@@ -147,7 +144,7 @@ async def update_circuit_breaker(sid, data):
             if 'is_double_point' in data:
                 circuit_breakers[item_id].is_double_point = data['is_double_point']
             
-            logger.info(f"Updated circuit breaker: {item.name} (IOA: {item.ioa_cb_status})")
+            logger.info(f"Updated circuit breaker: {item.name}, data: {circuit_breakers[item_id].dict()}")
             await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
             return {"status": "success"}
     

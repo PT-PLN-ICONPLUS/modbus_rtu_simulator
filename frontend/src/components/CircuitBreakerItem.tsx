@@ -87,13 +87,15 @@ function CircuitBreaker({
 
       // Send to backend
       socket.emit('update_circuit_breaker', {
-        ioa_cb_status: cb_status_open,
-        ioa_cb_status_close: cb_status_close,
-        ioa_cb_status_dp: cb_status_double,
-        ioa_control_close: control_close,
-        ioa_control_open: control_open,
-        ioa_control_dp: control_double,
-        remote: remote,
+        ioa_cb_status, // as id
+
+        cb_status_open,
+        cb_status_close,
+        cb_status_double,
+        control_close,
+        control_open,
+        control_double,
+        remote,
         is_sbo: isSBO,
       });
 

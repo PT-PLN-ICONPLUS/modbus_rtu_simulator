@@ -338,6 +338,20 @@ export function ManageItemDialog({
                 {itemType === "Circuit Breakers" && (
                   <>
                     <div className="flex w-full items-center gap-1.5">
+                      <Label htmlFor="ioaCbStatusClose" className="w-1/3">
+                        IOA CB Status Close
+                      </Label>
+                      <input
+                        type="number"
+                        id="ioaCbStatusClose"
+                        className={`border rounded p-2 w-2/3 ${errors.ioaCbStatusClose ? "border-red-500" : ""}`}
+                        value={ioaCbStatusClose}
+                        onChange={(e) => setIoaCbStatusClose(e.target.value)}
+                      />
+                      {errors.ioaCbStatusClose && <p className="text-red-500 text-xs">{errors.ioaCbStatusClose}</p>}
+                    </div>
+
+                    <div className="flex w-full items-center gap-1.5">
                       <Label htmlFor="ioaControlOpen" className="w-1/3">
                         IOA Control Open
                       </Label>
@@ -363,34 +377,6 @@ export function ManageItemDialog({
                         onChange={(e) => setIOAControlClose(e.target.value)}
                       />
                       {errors.ioaControlClose && <p className="text-red-500 text-xs">{errors.ioaControlClose}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="ioaLocalRemote" className="w-1/3">
-                        IOA Local/Remote
-                      </Label>
-                      <input
-                        type="number"
-                        id="ioaLocalRemote"
-                        className={`border rounded p-2 w-2/3 ${errors.ioaLocalRemote ? "border-red-500" : ""}`}
-                        value={ioaLocalRemote}
-                        onChange={(e) => setIOALocalRemote(e.target.value)}
-                      />
-                      {errors.ioaLocalRemote && <p className="text-red-500 text-xs">{errors.ioaLocalRemote}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="ioaCbStatusClose" className="w-1/3">
-                        IOA CB Status Close
-                      </Label>
-                      <input
-                        type="number"
-                        id="ioaCbStatusClose"
-                        className={`border rounded p-2 w-2/3 ${errors.ioaCbStatusClose ? "border-red-500" : ""}`}
-                        value={ioaCbStatusClose}
-                        onChange={(e) => setIoaCbStatusClose(e.target.value)}
-                      />
-                      {errors.ioaCbStatusClose && <p className="text-red-500 text-xs">{errors.ioaCbStatusClose}</p>}
                     </div>
 
                     <div className="flex w-full items-center gap-1.5">
@@ -438,6 +424,20 @@ export function ManageItemDialog({
                         </div>
                       </>
                     )}
+
+                    <div className="flex w-full items-center gap-1.5">
+                      <Label htmlFor="ioaLocalRemote" className="w-1/3">
+                        IOA Local/Remote
+                      </Label>
+                      <input
+                        type="number"
+                        id="ioaLocalRemote"
+                        className={`border rounded p-2 w-2/3 ${errors.ioaLocalRemote ? "border-red-500" : ""}`}
+                        value={ioaLocalRemote}
+                        onChange={(e) => setIOALocalRemote(e.target.value)}
+                      />
+                      {errors.ioaLocalRemote && <p className="text-red-500 text-xs">{errors.ioaLocalRemote}</p>}
+                    </div>
                   </>
                 )}
 
