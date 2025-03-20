@@ -178,14 +178,15 @@ async def update_telesignal(sid, data):
             # Update auto_mode if provided
             if 'auto_mode' in data:
                 tele_signals[item_id].auto_mode = data['auto_mode']
+                logger.info(f"Telesignal set auto_mode to {data['auto_mode']} name: {item.name} (IOA: {item.ioa})")
             
             # Update value if provided
             if 'value' in data:
                 new_value = data['value']
                 tele_signals[item_id].value = new_value
                 store.setValues(1, item.ioa - 1, [new_value])
+                logger.info(f"Telesignal updated: {item.name} (IOA: {item.ioa}) value: {item.value}")
             
-            logger.info(f"Updated telesignal: {item.name} (IOA: {item.ioa})")
             await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()])
             return {"status": "success"}
     
@@ -223,7 +224,7 @@ async def update_telemetry(sid, data):
             # Update auto_mode if provided
             if 'auto_mode' in data:
                 telemetry_items[item_id].auto_mode = data['auto_mode']
-                logger.info(f"Set auto_mode to {data['auto_mode']} for telemetry: {item.name} (IOA: {item.ioa})")
+                logger.info(f"Telemetry set auto_mode to {data['auto_mode']} name: {item.name} (IOA: {item.ioa})")
             
             # Update value if provided
             if 'value' in data:
@@ -231,7 +232,7 @@ async def update_telemetry(sid, data):
                 telemetry_items[item_id].value = new_value
                 scaled_value = int(new_value / item.scale_factor)
                 store.setValues(3, item.ioa - 1, [scaled_value])
-                logger.info(f"Updated telemetry value to {new_value} for: {item.name} (IOA: {item.ioa})")
+                logger.info(f"Telemetry updated: {item.name} (IOA: {item.ioa}) value: {item.value}")
             
             await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()])
             return {"status": "success"}
@@ -320,6 +321,8 @@ async def simulate_values():
             telemetry_items[item_id].value = round(new_value, 2)
             scaled_value = int(new_value / item.scale_factor)
             store.setValues(3, item.ioa - 1, [scaled_value])
+            
+            logger.info(f"Telemetry auto-updated: {item.name} (IOA: {item.ioa}) value: {telemetry_items[item_id].value}")
             
             # Record update time
             last_update_times["telemetry_items"][item_id] = current_time
