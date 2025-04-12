@@ -1,4 +1,5 @@
 import asyncio
+import threading
 import time
 from typing import Dict
 from fastapi import FastAPI
@@ -51,10 +52,10 @@ telemetry_items: Dict[str, TelemetryItem] = {}
 
 # Initialize MODBUS Data Store with sufficient space
 store = ModbusSlaveContext(
-    di=ModbusSequentialDataBlock(0, [0] * 1000),  # Discrete Inputs
-    co=ModbusSequentialDataBlock(0, [0] * 1000),  # Coil Statuses
-    hr=ModbusSequentialDataBlock(0, [0] * 2000),  # Holding Registers
-    ir=ModbusSequentialDataBlock(0, [0] * 2000),  # Input Registers
+    di=ModbusSequentialDataBlock(0, [0] * 5000),  # Discrete Inputs
+    co=ModbusSequentialDataBlock(0, [0] * 5000),  # Coil Statuses
+    hr=ModbusSequentialDataBlock(0, [0] * 7000),  # Holding Registers
+    ir=ModbusSequentialDataBlock(0, [0] * 7000),  # Input Registers
 )
 context = ModbusServerContext(slaves=store, single=True)
 
@@ -352,30 +353,21 @@ device = ModbusDeviceIdentification(
     )
 
 # Start the MODBUS server
-async def start_modbus_server():
-    await StartAsyncTcpServer(
-            context=context, 
-            address=(MODBUS_HOST, MODBUS_PORT),
-            framer=FramerType.SOCKET,
-            identity=device,
-            broadcast_enable=True,
-            # Add these parameters to fix connection issues:
-            allow_reuse_address=True,
-            backlog=10,
-            defer_start=False,
-            ignore_missing_slaves=True,
-            # Increase timeout values
-            request_tracer=None,
-            timeout=5,
-            strict=False
-        )
+def run_modbus_server():
+    StartTcpServer(
+        context=context, 
+        address=(MODBUS_HOST, MODBUS_PORT),
+        framer=FramerType.SOCKET,
+        identity=device,
+    )
 
 # Lifespan event handler
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup code
-    # Start Modbus server using asyncio instead of threading
-    modbus_task = asyncio.create_task(start_modbus_server())
+    # Start Modbus server using threading instead of asyncio
+    server_thread = threading.Thread(target=run_modbus_server, daemon=True)
+    server_thread.start()
     logger.info(f"Started MODBUS TCP Server on {MODBUS_HOST}:{MODBUS_PORT}")
 
     # Start the Socket.IO update task
@@ -386,7 +378,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         # Shutdown code
-        modbus_task.cancel()
+        # modbus_task.cancel()
         task.cancel()
         logger.info("Shutting down Socket.IO simulation task")
 
