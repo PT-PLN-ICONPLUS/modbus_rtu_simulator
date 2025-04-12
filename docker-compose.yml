@@ -17,13 +17,13 @@ services:
   frontend_modbus_tcp_server_simulator:
     build: ./frontend
     ports:
-      - "3001:3001"
+      - "3005:3005"
     networks:
       - app-tier
     env_file:
       - ./frontend/.env
     environment:
-      - REACT_PORT=3001
+      - REACT_PORT=3005
       - FASTAPI_HOST=10.14.152.231 # IP address of the backend_modbus_tcp_server_simulator_1
       - FASTAPI_PORT=7501
 
