@@ -1,3 +1,4 @@
+import asyncio
 import time
 from typing import Dict
 from fastapi import FastAPI
@@ -12,7 +13,6 @@ import random
 from dotenv import load_dotenv
 import os
 import logging
-import asyncio
 from contextlib import asynccontextmanager
 import uvicorn
 from pydantic import BaseModel
@@ -149,6 +149,7 @@ async def update_circuit_breaker(sid, data):
             return {"status": "success"}
     
     return {"status": "error", "message": "Circuit breaker not found"}
+
 @sio.event
 async def remove_circuit_breaker(sid, data):
     item_id = data.get('id')
@@ -357,7 +358,16 @@ async def start_modbus_server():
             address=(MODBUS_HOST, MODBUS_PORT),
             framer=FramerType.SOCKET,
             identity=device,
-            broadcast_enable=True
+            broadcast_enable=True,
+            # Add these parameters to fix connection issues:
+            allow_reuse_address=True,
+            backlog=10,
+            defer_start=False,
+            ignore_missing_slaves=True,
+            # Increase timeout values
+            request_tracer=None,
+            timeout=5,
+            strict=False
         )
 
 # Lifespan event handler
@@ -376,6 +386,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         # Shutdown code
+        modbus_task.cancel()
         task.cancel()
         logger.info("Shutting down Socket.IO simulation task")
 

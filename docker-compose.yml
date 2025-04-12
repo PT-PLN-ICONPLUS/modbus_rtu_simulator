@@ -1,8 +1,6 @@
 services:
   backend_modbus_tcp_server_simulator:
     build: ./backend
-    container_name: backend_modbus_tcp_server_simulator_1
-    hostname: backend_modbus_tcp_server_simulator_1
     ports:
       - "7501:7501"
       - "8001:8001"
@@ -18,7 +16,6 @@ services:
 
   frontend_modbus_tcp_server_simulator:
     build: ./frontend
-    container_name: frontend_modbus_tcp_server_simulator_1
     ports:
       - "3001:3001"
     networks:
@@ -27,10 +24,8 @@ services:
       - ./frontend/.env
     environment:
       - REACT_PORT=3001
-      - FASTAPI_HOST=backend_modbus_tcp_server_simulator_1
+      - FASTAPI_HOST=localhost # IP address of the backend_modbus_tcp_server_simulator_1
       - FASTAPI_PORT=7501
-    depends_on:
-      - backend_modbus_tcp_server_simulator
 
   # backend_modbus_tcp_server_simulator_2:
   #   build: ./backend
