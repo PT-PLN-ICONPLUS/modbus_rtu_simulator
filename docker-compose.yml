@@ -3,7 +3,7 @@ services:
     build: ./backend
     ports:
       - "7501:7501"
-      - "8001:8001"
+      - "9001:9001"
     networks:
       - app-tier
     env_file:
@@ -12,7 +12,7 @@ services:
       - FASTAPI_HOST=0.0.0.0
       - FASTAPI_PORT=7501
       - MODBUS_HOST=0.0.0.0
-      - MODBUS_PORT=8001
+      - MODBUS_PORT=9001
 
   frontend_modbus_tcp_server_simulator:
     build: ./frontend
@@ -24,7 +24,7 @@ services:
       - ./frontend/.env
     environment:
       - REACT_PORT=3001
-      - FASTAPI_HOST=localhost # IP address of the backend_modbus_tcp_server_simulator_1
+      - FASTAPI_HOST=10.14.152.231 # IP address of the backend_modbus_tcp_server_simulator_1
       - FASTAPI_PORT=7501
 
   # backend_modbus_tcp_server_simulator_2:
