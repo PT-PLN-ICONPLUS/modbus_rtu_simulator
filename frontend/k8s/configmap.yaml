@@ -4,6 +4,6 @@ metadata:
   name: iconics-modbus-simulator-frontend
   namespace: scada-grita
 data:
-  REACT_PORT: "3001"
+  REACT_PORT: "3005"
   FASTAPI_HOST: "10.14.73.59"
   FASTAPI_PORT: "7501"
