@@ -42,13 +42,17 @@ metadata:
   labels:
     app: modbus-simulator-backend
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app: modbus-simulator-backend
   ports:
-    - port: 7501
+    - name: fastapi-port
+      port: 7501
       targetPort: 7501
+      nodePort: 30501
       protocol: TCP
-    - port: 9001
+    - name: modbus-port
+      port: 9001
       targetPort: 9001
+      nodePort: 30901
       protocol: TCP
