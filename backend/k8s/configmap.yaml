@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: iconics-modbus-simualor-backend
+  name: iconics-modbus-simulator-backend
   namespace: scada-grita
 data:
   FASTAPI_HOST=0.0.0.0

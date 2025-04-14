@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend-modbus-simulator
+  name: modbus-simulator-frontend
   namespace: scada-grita
   labels:
-    app: frontend-modbus-simulator
+    app: modbus-simulator-frontend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: frontend-modbus-simulator
+      app: modbus-simulator-frontend
   template:
     metadata:
       labels:
-        app: frontend-modbus-simulator
+        app: modbus-simulator-frontend
     spec:
       containers:
-        - name: frontend-modbus-simulator
-          image: 10.14.73.59/scada/frontend-modbus-simulator:latest
+        - name: modbus-simulator-frontend
+          image: 10.14.73.59/scada/modbus-simulator-frontend
           imagePullPolicy: Always
           ports:
             - containerPort: 3005
@@ -33,14 +33,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: frontend-modbus-simulator-service
+  name: modbus-simulator-frontend-service
   namespace: scada-grita
   labels:
-    app: frontend-modbus-simulator
+    app: modbus-simulator-frontend
 spec:
   type: NodePort
   selector:
-    app: frontend-modbus-simulator
+    app: modbus-simulator-frontend
   ports:
     - port: 3005
       targetPort: 3005
