@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-modbus-simulator
+  namespace: scada-grita
+  labels:
+    app: backend-modbus-simulator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend-modbus-simulator
+  template:
+    metadata:
+      labels:
+        app: backend-modbus-simulator
+    spec:
+      containers:
+        - name: backend-modbus-simulator
+          image: 10.14.73.59/scada/backend-modbus-simulator
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 7501
+            - containerPort: 9001
+          envFrom:
+            - configMapRef:
+                name: iconics-modbus-simualor-backend
+          volumeMounts:
+            - name: backend-config
+              mountPath: /app/config
+      volumes:
+        - name: backend-config
+          configMap:
+            name: iconics-modbus-simualor-backend
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-modbus-simulator-service
+  namespace: scada-grita
+  labels:
+    app: backend-modbus-simulator
+spec:
+  type: ClusterIP
+  selector:
+    app: backend-modbus-simulator
+  ports:
+    - port: 7501
+      targetPort: 7501
+      protocol: TCP
+    - port: 9001
+      targetPort: 9001
+      protocol: TCP
