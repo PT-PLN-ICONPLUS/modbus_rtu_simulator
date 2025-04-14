@@ -6,4 +6,4 @@ metadata:
 data:
   REACT_PORT: "3005"
   FASTAPI_HOST: "10.14.73.59"
-  FASTAPI_PORT: "7501"
+  FASTAPI_PORT: "30501"
