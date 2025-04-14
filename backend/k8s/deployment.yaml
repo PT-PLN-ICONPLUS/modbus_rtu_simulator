@@ -15,6 +15,8 @@ spec:
       labels:
         app: modbus-simulator-backend
     spec:
+      imagePullSecrets:
+        - name: harbor-secret
       containers:
         - name: modbus-simulator-backend
           image: 10.14.73.59/scada/modbus-simulator-backend
