@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: iconics-modbus-simulator-frontend
+  name: iconics-modbus-simulator-frontend-${IMAGE_TAG}
   namespace: scada-grita
 data:
-  REACT_PORT: "3005"
-  FASTAPI_HOST: "10.14.73.59"
-  FASTAPI_PORT: "30501"
+  REACT_PORT: "${REACT_PORT}"
+  FASTAPI_HOST: "${FASTAPI_HOST}"
+  FASTAPI_PORT: "${FASTAPI_NODEPORT}"
