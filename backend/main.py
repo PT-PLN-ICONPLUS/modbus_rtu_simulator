@@ -73,6 +73,21 @@ async def disconnect(sid):
     logger.info(f"Client disconnected: {sid}")
     
 @sio.event
+async def get_initial_data(sid):
+    """Send initial data to the frontend."""
+    try:
+        data = {
+            "circuit_breakers": [item.model_dump() for item in circuit_breakers.values()],
+            "telesignals": [item.model_dump() for item in tele_signals.values()],
+            "telemetries": [item.model_dump() for item in telemetry_items.values()],
+        }
+        await sio.emit('get_initial_data_response', data, room=sid)
+        logger.info(f"Initial data sent to {sid}")
+    except Exception as e:
+        logger.error(f"Error fetching initial data: {e}")
+        await sio.emit('get_initial_data_error', {"error": "Failed to fetch initial data"}, room=sid)
+    
+@sio.event
 async def add_circuit_breaker(sid, data):
     item = CircuitBreakerItem(**data)
     circuit_breakers[item.id] = item
@@ -340,7 +355,76 @@ async def simulate_values():
             
         # Use a shorter sleep time to check more frequently, but not burn CPU
         await asyncio.sleep(0.1)
-        
+    
+@sio.event
+async def export_data(sid):
+    """Export all data as JSON via socket."""
+    try:
+        logger.info("Exporting all IOA data via socket")
+        data = {
+            "circuit_breakers": [item.model_dump() for item in circuit_breakers.values()],
+            "telesignals": [item.model_dump() for item in tele_signals.values()],
+            "telemetries": [item.model_dump() for item in telemetry_items.values()],
+        }
+        await sio.emit('export_data_response', data, room=sid)
+    except Exception as e:
+        logger.error(f"Error exporting data: {e}")
+        await sio.emit('export_data_error', {"error": "Failed to export data"}, room=sid)
+
+@sio.event
+async def import_data(sid, data):
+    """Import all data from JSON via socket."""
+    try:
+        logger.info("Importing data via socket")
+        # Clear existing data
+        circuit_breakers.clear()
+        tele_signals.clear()
+        telemetry_items.clear()
+
+        # Populate with new data
+        for cb in data.get("circuit_breakers", []):
+            item = CircuitBreakerItem(**cb)
+            circuit_breakers[item.id] = item
+            
+            # Update Modbus registers with initial states
+            store.setValues(2, item.ioa_cb_status - 1, [False])
+            store.setValues(2, item.ioa_cb_status_close - 1, [False])
+            if item.is_double_point and item.ioa_cb_status_dp:
+                store.setValues(4, item.ioa_cb_status_dp - 1, [0])
+                store.setValues(3, item.ioa_control_dp - 1, [0])
+                
+            store.setValues(1, item.ioa_control_open - 1, [0])
+            store.setValues(1, item.ioa_control_close - 1, [0])
+            store.setValues(1, item.ioa_local_remote - 1, [item.remote])
+            logger.info(f"Added circuit breaker: {item.name} with IOA CB status open (for unique value): {item.ioa_cb_status}")    
+            
+        for ts in data.get("telesignals", []):
+            item = TeleSignalItem(**ts)
+            tele_signals[item.id] = item
+            
+            # Update Modbus register with initial state
+            store.setValues(1, item.ioa - 1, [item.value])  # Discrete input
+            logger.info(f"Added telesignal: {item.name} with IOA {item.ioa}")
+
+        for tm in data.get("telemetries", []):
+            item = TelemetryItem(**tm)
+            telemetry_items[item.id] = item
+            # Update Modbus register with initial state
+            # Scale value as needed for integer representation
+            scaled_value = int(item.value / item.scale_factor)
+            
+            store.setValues(3, item.ioa - 1, [scaled_value])  # Holding register
+            logger.info(f"Added telemetry: {item.name} with IOA {item.ioa}")
+            
+        await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()], room=sid)
+        await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()], room=sid)
+        await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()], room=sid)
+        await sio.emit('import_data_response', {"status": "success"}, room=sid)
+    except Exception as e:
+        logger.error(f"Error importing data: {e}")
+        await sio.emit('import_data_error', {"error": "Failed to import data"}, room=sid)
+            
+
 device = ModbusDeviceIdentification(
         info_name={
             "VendorName": "Pymodbus",
