@@ -5,7 +5,7 @@ from typing import Dict
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import socketio
-from pymodbus.server import StartTcpServer, StartAsyncTcpServer
+from pymodbus.server import StartTcpServer, StartAsyncTcpServer, ServerStop
 from pymodbus.datastore import ModbusSlaveContext, ModbusServerContext
 from pymodbus.datastore import ModbusSequentialDataBlock
 from pymodbus import FramerType
@@ -47,8 +47,8 @@ app.add_middleware(
 
 # In-memory storage for items
 circuit_breakers: Dict[str, CircuitBreakerItem] = {}
-tele_signals: Dict[str, TeleSignalItem] = {}
-telemetry_items: Dict[str, TelemetryItem] = {}
+telesignals: Dict[str, TeleSignalItem] = {}
+telemetries: Dict[str, TelemetryItem] = {}
 
 # Initialize MODBUS Data Store with sufficient space
 store = ModbusSlaveContext(
@@ -65,8 +65,8 @@ async def connect(sid, environ):
     logger.info(f"Client connected: {sid}")
     # Send current state to new clients
     await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()], room=sid)
-    await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()], room=sid)
-    await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()], room=sid)
+    await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()], room=sid)
+    await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()], room=sid)
 
 @sio.event
 async def disconnect(sid):
@@ -78,8 +78,8 @@ async def get_initial_data(sid):
     try:
         data = {
             "circuit_breakers": [item.model_dump() for item in circuit_breakers.values()],
-            "telesignals": [item.model_dump() for item in tele_signals.values()],
-            "telemetries": [item.model_dump() for item in telemetry_items.values()],
+            "telesignals": [item.model_dump() for item in telesignals.values()],
+            "telemetries": [item.model_dump() for item in telemetries.values()],
         }
         await sio.emit('get_initial_data_response', data, room=sid)
         logger.info(f"Initial data sent to {sid}")
@@ -92,33 +92,37 @@ async def add_circuit_breaker(sid, data):
     item = CircuitBreakerItem(**data)
     circuit_breakers[item.id] = item
     
-    # Update Modbus registers with initial states
-    # 1. CB Status Single Open (Discrete Input) - Register type 2
-    store.setValues(2, item.ioa_cb_status - 1, [False])
-    
-    # 2. CB Status Single Close (Discrete Input) - Register type 2
-    store.setValues(2, item.ioa_cb_status_close - 1, [False])
-    
-    # 3. CB Status Double Point (Input Register) if enabled - Register type 4
-    if item.is_double_point and item.ioa_cb_status_dp:
-        store.setValues(4, item.ioa_cb_status_dp - 1, [0])
-        # Control Double (Holding Register) if enabled
-        store.setValues(3, item.ioa_control_dp - 1, [0])  # Initially off
-    
-    # 4. Control Open/Close (Coils) - Register type 1
-    store.setValues(1, item.ioa_control_open - 1, [0])  # Initially off
-    store.setValues(1, item.ioa_control_close - 1, [0])  # Initially off
-    
-    # 6. Local/Remote (Coil) - Register type 1
-    store.setValues(1, item.ioa_local_remote - 1, [item.remote])
-    
-    logger.info(f"Added circuit breaker: {item.name} with IOA CB status open (for unique value): {item.ioa_cb_status}")
-    await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
-    return {"status": "success", "message": f"Added circuit breaker {item.name}"}
+    try:
+        # Update Modbus registers with initial states
+        # 1. CB Status Single Open (Discrete Input) - Register type 2
+        store.setValues(2, item.ioa_cb_status - 1, [False])
+        
+        # 2. CB Status Single Close (Discrete Input) - Register type 2
+        store.setValues(2, item.ioa_cb_status_close - 1, [False])
+        
+        # 3. CB Status Double Point (Input Register) if enabled - Register type 4
+        if item.is_double_point and item.ioa_cb_status_dp:
+            store.setValues(4, item.ioa_cb_status_dp - 1, [0])
+            # Control Double (Holding Register) if enabled
+            store.setValues(3, item.ioa_control_dp - 1, [0])  # Initially off
+        
+        # 4. Control Open/Close (Coils) - Register type 1
+        store.setValues(1, item.ioa_control_open - 1, [0])  # Initially off
+        store.setValues(1, item.ioa_control_close - 1, [0])  # Initially off
+        
+        # 6. Local/Remote (Coil) - Register type 1
+        store.setValues(1, item.ioa_local_remote - 1, [item.remote])
+        
+        logger.info(f"Added circuit breaker: {item.name} with IOA CB status open (for unique value): {item.ioa_cb_status}")
+        await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
+        return {"status": "success", "message": f"Added circuit breaker {item.name}"}
+    except Exception as e:
+        logger.error(f"Error adding circuit breaker: {e}")
+        return {"status": "error", "message": "Failed to add circuit breaker"}
 
 @sio.event
 async def update_circuit_breaker(sid, data):
-    ioa_cb_status = data.get('ioa_cb_status')
+    id = data.get('id')
     # Find the item by IOA
     for item_id, item in list(circuit_breakers.items()):
         if item.ioa_cb_status == ioa_cb_status:
@@ -160,7 +164,7 @@ async def update_circuit_breaker(sid, data):
             if 'is_double_point' in data:
                 circuit_breakers[item_id].is_double_point = data['is_double_point']
             
-            logger.info(f"Updated circuit breaker: {item.name}, data: {circuit_breakers[item_id].dict()}")
+            logger.info(f"Updated circuit breaker: {item.name}, data: {circuit_breakers[item_id].model_dump()}")
             await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
             return {"status": "success"}
     
@@ -171,6 +175,16 @@ async def remove_circuit_breaker(sid, data):
     item_id = data.get('id')
     if item_id and item_id in circuit_breakers:
         item = circuit_breakers.pop(item_id)
+        # Remove Modbus registers
+        store.setValues(2, item.ioa_cb_status - 1, [False])
+        store.setValues(2, item.ioa_cb_status_close - 1, [False])
+        store.setValues(1, item.ioa_control_open - 1, [0])
+        store.setValues(1, item.ioa_control_close - 1, [0])
+        if item.is_double_point and item.ioa_cb_status_dp:
+            store.setValues(4, item.ioa_cb_status_dp - 1, [0])
+            store.setValues(3, item.ioa_control_dp - 1, [0])
+        store.setValues(1, item.ioa_local_remote - 1, [False])
+        
         logger.info(f"Removed circuit breaker: {item.name}")
         await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
         return {"status": "success", "message": f"Removed circuit breaker {item.name}"}
@@ -179,32 +193,36 @@ async def remove_circuit_breaker(sid, data):
 @sio.event
 async def add_tele_signal(sid, data):
     item = TeleSignalItem(**data)
-    tele_signals[item.id] = item
+    telesignals[item.id] = item
     # Update Modbus register with initial state
-    store.setValues(1, item.ioa - 1, [item.value])  # Discrete input
-    logger.info(f"Added telesignal: {item.name} with IOA {item.ioa}")
-    await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()])
-    return {"status": "success", "message": f"Added telesignal {item.name}"}
+    try:
+        store.setValues(1, item.ioa - 1, [item.value])  # Discrete input
+        logger.info(f"Added telesignal: {item.name} with IOA {item.ioa}")
+        await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
+        return {"status": "success", "message": f"Added telesignal {item.name}"}
+    except Exception as e:
+        logger.error(f"Error adding telesignal: {e}")
+        return {"status": "error", "message": "Failed to add telesignal"}
 
 @sio.event
 async def update_telesignal(sid, data):
     ioa = data.get('ioa')
     # Find the item by IOA
-    for item_id, item in list(tele_signals.items()):
+    for item_id, item in list(telesignals.items()):
         if item.ioa == ioa:
             # Update auto_mode if provided
             if 'auto_mode' in data:
-                tele_signals[item_id].auto_mode = data['auto_mode']
+                telesignals[item_id].auto_mode = data['auto_mode']
                 logger.info(f"Telesignal set auto_mode to {data['auto_mode']} name: {item.name} (IOA: {item.ioa})")
             
             # Update value if provided
             if 'value' in data:
                 new_value = data['value']
-                tele_signals[item_id].value = new_value
+                telesignals[item_id].value = new_value
                 store.setValues(1, item.ioa - 1, [new_value])
                 logger.info(f"Telesignal updated: {item.name} (IOA: {item.ioa}) value: {item.value}")
             
-            await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()])
+            await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
             return {"status": "success"}
     
     return {"status": "error", "message": "Telesignal not found"}
@@ -212,46 +230,59 @@ async def update_telesignal(sid, data):
 @sio.event
 async def remove_tele_signal(sid, data):
     item_id = data.get('id')
-    if item_id and item_id in tele_signals:
-        item = tele_signals.pop(item_id)
+    if item_id and item_id in telesignals:
+        item = telesignals.pop(item_id)
+        # Remove Modbus register
+        store.setValues(1, item.ioa - 1, [0])  # Reset to 0
+        
         logger.info(f"Removed telesignal: {item.name}")
-        await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()])
+        await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
         return {"status": "success", "message": f"Removed telesignal {item.name}"}
     return {"status": "error", "message": "Telesignal not found"}
 
 @sio.event
 async def add_telemetry(sid, data):
     item = TelemetryItem(**data)
-    telemetry_items[item.id] = item
+    telemetries[item.id] = item
     # Update Modbus register with initial state
-    # Scale value as needed for integer representation
-    scaled_value = int(item.value / item.scale_factor)
-    store.setValues(3, item.ioa - 1, [scaled_value])  # Holding register
-    logger.info(f"Added telemetry: {item.name} with IOA {item.ioa}")
-    await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()])
-    return {"status": "success", "message": f"Added telemetry {item.name}"}
+    try:
+        scaled_value = int(item.value / item.scale_factor)
 
-# Add this function after the update_telesignal event handler
+        store.setValues(3, item.ioa - 1, [scaled_value])  # Holding register
+
+        telemetries[item.id].value = item.value
+        telemetries[item.id].scale_factor = item.scale_factor
+        telemetries[item.id].auto_mode = item.auto_mode
+        telemetries[item.id].min_value = item.min_value
+        telemetries[item.id].max_value = item.max_value
+        
+        logger.info(f"Added telemetry: {item.name} with IOA {item.ioa}")
+        await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
+        return {"status": "success", "message": f"Added telemetry {item.name}"}
+    except Exception as e:
+        logger.error(f"Error adding telemetry: {e}")
+        return {"status": "error", "message": "Failed to add telemetry"}    
+
 @sio.event
 async def update_telemetry(sid, data):
     ioa = data.get('ioa')
     # Find the item by IOA
-    for item_id, item in list(telemetry_items.items()):
+    for item_id, item in list(telemetries.items()):
         if item.ioa == ioa:
             # Update auto_mode if provided
             if 'auto_mode' in data:
-                telemetry_items[item_id].auto_mode = data['auto_mode']
+                telemetries[item_id].auto_mode = data['auto_mode']
                 logger.info(f"Telemetry set auto_mode to {data['auto_mode']} name: {item.name} (IOA: {item.ioa})")
             
             # Update value if provided
             if 'value' in data:
                 new_value = data['value']
-                telemetry_items[item_id].value = new_value
-                scaled_value = int(new_value / item.scale_factor)
+                telemetries[item_id].value = new_value
+                scaled_value = int(round(new_value / item.scale_factor))
                 store.setValues(3, item.ioa - 1, [scaled_value])
                 logger.info(f"Telemetry updated: {item.name} (IOA: {item.ioa}) value: {item.value}")
             
-            await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()])
+            await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
             return {"status": "success"}
     
     return {"status": "error", "message": "Telemetry not found"}
@@ -259,102 +290,111 @@ async def update_telemetry(sid, data):
 @sio.event
 async def remove_telemetry(sid, data):
     item_id = data.get('id')
-    if item_id and item_id in telemetry_items:
-        item = telemetry_items.pop(item_id)
+    if item_id and item_id in telemetries:
+        item = telemetries.pop(item_id)
+        
+        # Remove Modbus register
+        store.setValues(3, item.ioa - 1, [0])  # Reset to 0
+        
         logger.info(f"Removed telemetry: {item.name}")
-        await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()])
+        await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
         return {"status": "success", "message": f"Removed telemetry {item.name}"}
     return {"status": "error", "message": "Telemetry not found"}
 
-async def simulate_values():
+async def poll_ioa_values():
+    """
+    Continuously poll IOA values from the IEC server and send them to frontend clients.
+    This function runs as a background task and sends updates every second.
+    Also handles auto mode changes for telesignals and telemetry.
+    """
+    logger.info("Starting IOA polling task")
+    
     # Track the last update time for each item
     last_update_times = {
         "circuit_breakers": {},
-        "tele_signals": {},
-        "telemetry_items": {}
+        "telesignals": {},
+        "telemetries": {}
     }
     
     while True:
-        current_time = time.time()
-        has_updates = {
-            "circuit_breakers": False,
-            "tele_signals": False,
-            "telemetry_items": False
-        }
-        
-        # Simulate circuit breakers in auto mode
-        for item_id, item in list(circuit_breakers.items()):
-            # Skip if not due for update yet
-            last_update = last_update_times["circuit_breakers"].get(item_id, 0)
-            if current_time - last_update < item.interval:
-                continue
+        try:
+            current_time = time.time()
+            has_updates = {
+                "circuit_breakers": False,
+                "telesignals": False,
+                "telemetries": False
+            }
+            
+            # Simulate telesignals in auto mode
+            for item_id, item in list(telesignals.items()):
+                # Skip if not due for update yet
+                last_update = last_update_times["telesignals"].get(item_id, 0)
+                if current_time - last_update < item.interval:
+                    continue
                 
-            if not item.remote:  # Only change values if not in remote mode
-                continue
-                
-            new_value = random.randint(item.min_value, item.max_value)
-            if new_value != item.value:
-                circuit_breakers[item_id].value = new_value
-                store.setValues(1, item.ioa_data - 1, [new_value])
-                if item.is_double_point and item.ioa_data_dp:
-                    store.setValues(1, item.ioa_data_dp - 1, [new_value >> 1])
+                # Check if auto mode is enabled
+                if not getattr(item, 'auto_mode', True):  # Default to True for backward compatibility
+                    continue
                     
+                new_value = random.randint(0, 1)
+                if new_value != item.value:
+                    telesignals[item_id].value = new_value
+                    store.setValues(1, item.ioa - 1, [new_value])
+                    
+                    logger.info(f"Telesignal auto-updated: {item.name} (IOA: {item.ioa}) value: {telesignals[item_id].value}")
+                    
+                    # Record update time
+                    last_update_times["telesignals"][item_id] = current_time
+                    has_updates["telesignals"] = True
+            
+            # Simulate telemetry in auto mode
+            for item_id, item in list(telemetries.items()):
+                # Skip if not due for update yet
+                last_update = last_update_times["telemetries"].get(item_id, 0)
+                if current_time - last_update < item.interval:
+                    continue
+                    
+                # Check if auto mode is enabled
+                if not getattr(item, 'auto_mode', True):  # Default to True for backward compatibility
+                    continue
+                    
+                # Generate a random value within range that's a multiple of the scale factor
+                scale_factor = item.scale_factor
+                # Determine how many possible steps exist within the range
+                possible_steps = int(round((item.max_value - item.min_value) / scale_factor)) + 1
+                # Choose a random step
+                random_step = random.randint(0, possible_steps - 1)
+                new_value = item.min_value + (random_step * scale_factor)
+                # Determine precision based on scale factor
+                precision = 0 if scale_factor >= 1 else -int(math.floor(math.log10(scale_factor)))
+                # Round to appropriate precision to avoid floating point errors
+                new_value = round(new_value, precision)
+                
+                # Update the telemetry object with the new value
+                telemetries[item_id].value = new_value
+                scaled_value = int(round(new_value / scale_factor))
+                
+                store.setValues(3, item.ioa - 1, [scaled_value])  # Holding register
+                
+                logger.info(f"Telemetry auto-updated: {item.name} (IOA: {item.ioa}) value: {telemetries[item_id].value}")
+                
                 # Record update time
-                last_update_times["circuit_breakers"][item_id] = current_time
-                has_updates["circuit_breakers"] = True
-        
-        # Simulate telesignals in auto mode
-        for item_id, item in list(tele_signals.items()):
-            # Skip if not due for update yet
-            last_update = last_update_times["tele_signals"].get(item_id, 0)
-            if current_time - last_update < item.interval:
-                continue
-            
-            # Check if auto mode is enabled
-            if not getattr(item, 'auto_mode', True):  # Default to True for backward compatibility
-                continue
+                last_update_times["telemetries"][item_id] = current_time
+                has_updates["telemetries"] = True
                 
-            new_value = random.randint(item.min_value, item.max_value)
-            if new_value != item.value:
-                tele_signals[item_id].value = new_value
-                store.setValues(1, item.ioa - 1, [new_value])
+            # Broadcast updates only if there were changes
+            if has_updates["circuit_breakers"] and circuit_breakers:
+                await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
+            if has_updates["telesignals"] and telesignals:
+                await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
+            if has_updates["telemetries"] and telemetries:
+                await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
                 
-                # Record update time
-                last_update_times["tele_signals"][item_id] = current_time
-                has_updates["tele_signals"] = True
-        
-        # Simulate telemetry in auto mode
-        for item_id, item in list(telemetry_items.items()):
-            # Skip if not due for update yet
-            last_update = last_update_times["telemetry_items"].get(item_id, 0)
-            if current_time - last_update < item.interval:
-                continue
-                
-            # Check if auto mode is enabled
-            if not getattr(item, 'auto_mode', True):  # Default to True for backward compatibility
-                continue
-                
-            new_value = random.uniform(item.min_value, item.max_value)
-            telemetry_items[item_id].value = round(new_value, 2)
-            scaled_value = int(new_value / item.scale_factor)
-            store.setValues(3, item.ioa - 1, [scaled_value])
-            
-            logger.info(f"Telemetry auto-updated: {item.name} (IOA: {item.ioa}) value: {telemetry_items[item_id].value}")
-            
-            # Record update time
-            last_update_times["telemetry_items"][item_id] = current_time
-            has_updates["telemetry_items"] = True
-            
-        # Broadcast updates only if there were changes
-        if has_updates["circuit_breakers"] and circuit_breakers:
-            await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
-        if has_updates["tele_signals"] and tele_signals:
-            await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()])
-        if has_updates["telemetry_items"] and telemetry_items:
-            await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()])
-            
-        # Use a shorter sleep time to check more frequently, but not burn CPU
-        await asyncio.sleep(0.1)
+            # Use a shorter sleep time to check more frequently, but not burn CPU
+            await asyncio.sleep(0.1)
+        except Exception as e:
+            logger.error(f"Error in IOA polling task: {str(e)}")
+            await asyncio.sleep(3)  # Wait before retrying if there's an error
     
 @sio.event
 async def export_data(sid):
@@ -363,8 +403,8 @@ async def export_data(sid):
         logger.info("Exporting all IOA data via socket")
         data = {
             "circuit_breakers": [item.model_dump() for item in circuit_breakers.values()],
-            "telesignals": [item.model_dump() for item in tele_signals.values()],
-            "telemetries": [item.model_dump() for item in telemetry_items.values()],
+            "telesignals": [item.model_dump() for item in telesignals.values()],
+            "telemetries": [item.model_dump() for item in telemetries.values()],
         }
         await sio.emit('export_data_response', data, room=sid)
     except Exception as e:
@@ -378,8 +418,8 @@ async def import_data(sid, data):
         logger.info("Importing data via socket")
         # Clear existing data
         circuit_breakers.clear()
-        tele_signals.clear()
-        telemetry_items.clear()
+        telesignals.clear()
+        telemetries.clear()
 
         # Populate with new data
         for cb in data.get("circuit_breakers", []):
@@ -400,7 +440,7 @@ async def import_data(sid, data):
             
         for ts in data.get("telesignals", []):
             item = TeleSignalItem(**ts)
-            tele_signals[item.id] = item
+            telesignals[item.id] = item
             
             # Update Modbus register with initial state
             store.setValues(1, item.ioa - 1, [item.value])  # Discrete input
@@ -408,7 +448,7 @@ async def import_data(sid, data):
 
         for tm in data.get("telemetries", []):
             item = TelemetryItem(**tm)
-            telemetry_items[item.id] = item
+            telemetries[item.id] = item
             # Update Modbus register with initial state
             # Scale value as needed for integer representation
             scaled_value = int(item.value / item.scale_factor)
@@ -417,14 +457,13 @@ async def import_data(sid, data):
             logger.info(f"Added telemetry: {item.name} with IOA {item.ioa}")
             
         await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()], room=sid)
-        await sio.emit('tele_signals', [item.model_dump() for item in tele_signals.values()], room=sid)
-        await sio.emit('telemetry_items', [item.model_dump() for item in telemetry_items.values()], room=sid)
+        await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()], room=sid)
+        await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()], room=sid)
         await sio.emit('import_data_response', {"status": "success"}, room=sid)
     except Exception as e:
         logger.error(f"Error importing data: {e}")
         await sio.emit('import_data_error', {"error": "Failed to import data"}, room=sid)
             
-
 device = ModbusDeviceIdentification(
         info_name={
             "VendorName": "Pymodbus",
@@ -455,14 +494,14 @@ async def lifespan(app: FastAPI):
     logger.info(f"Started MODBUS TCP Server on {MODBUS_HOST}:{MODBUS_PORT}")
 
     # Start the Socket.IO update task
-    task = asyncio.create_task(simulate_values())
+    task = asyncio.create_task(poll_ioa_values())
     logger.info("Started Socket.IO simulation task")
 
     try:
         yield
     finally:
         # Shutdown code
-        # modbus_task.cancel()
+        ServerStop()
         task.cancel()
         logger.info("Shutting down Socket.IO simulation task")
 
@@ -470,7 +509,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 socket_app = socketio.ASGIApp(sio, app)
 
-# API endpoints
+# API endpoint home
 @app.get("/")
 async def root():
     return {
@@ -478,28 +517,8 @@ async def root():
         "status": "running",
         "items": {
             "circuit_breakers": len(circuit_breakers),
-            "tele_signals": len(tele_signals),
-            "telemetry_items": len(telemetry_items)
-        }
-    }
-
-@app.get("/status")
-async def status():
-    return {
-        "modbus_server": {
-            "host": MODBUS_HOST,
-            "port": MODBUS_PORT,
-            "status": "running"
-        },
-        "socket_server": {
-            "host": FASTAPI_HOST,
-            "port": FASTAPI_PORT,
-            "status": "running"
-        },
-        "items": {
-            "circuit_breakers": len(circuit_breakers),
-            "tele_signals": len(tele_signals),
-            "telemetry_items": len(telemetry_items)
+            "telesignals": len(telesignals),
+            "telemetries": len(telemetries)
         }
     }
 

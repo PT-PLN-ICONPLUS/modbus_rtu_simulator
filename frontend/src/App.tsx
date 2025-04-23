@@ -43,20 +43,20 @@ function App() {
       setCircuitBreakers(data);
     });
 
-    socket.on('tele_signals', (data: TeleSignalItem[]) => {
+    socket.on('telesignals', (data: TeleSignalItem[]) => {
       console.log('Received telesignals update:', data);
       setTeleSignals(data);
     });
 
-    socket.on('telemetry_items', (data: TelemetryItem[]) => {
+    socket.on('telemetries', (data: TelemetryItem[]) => {
       console.log('Received telemetry update:', data);
       setTelemetry(data);
     });
 
     return () => {
       socket.off('circuit_breakers');
-      socket.off('tele_signals');
-      socket.off('telemetry_items');
+      socket.off('telesignals');
+      socket.off('telemetries');
     };
   }, []);
 
