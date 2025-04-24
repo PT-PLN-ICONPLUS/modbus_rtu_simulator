@@ -1,4 +1,5 @@
 import asyncio
+import math
 import threading
 import time
 from typing import Dict
@@ -125,7 +126,7 @@ async def update_circuit_breaker(sid, data):
     id = data.get('id')
     # Find the item by IOA
     for item_id, item in list(circuit_breakers.items()):
-        if item.ioa_cb_status == ioa_cb_status:
+        if id == item_id:
             # Update remote status if provided
             if 'remote' in data:
                 circuit_breakers[item_id].remote = data['remote']
@@ -191,7 +192,7 @@ async def remove_circuit_breaker(sid, data):
     return {"status": "error", "message": "Circuit breaker not found"}
 
 @sio.event
-async def add_tele_signal(sid, data):
+async def add_telesignal(sid, data):
     item = TeleSignalItem(**data)
     telesignals[item.id] = item
     # Update Modbus register with initial state
@@ -206,7 +207,7 @@ async def add_tele_signal(sid, data):
 
 @sio.event
 async def update_telesignal(sid, data):
-    ioa = data.get('ioa')
+    ioa = int(data['ioa'])
     # Find the item by IOA
     for item_id, item in list(telesignals.items()):
         if item.ioa == ioa:
@@ -228,7 +229,7 @@ async def update_telesignal(sid, data):
     return {"status": "error", "message": "Telesignal not found"}
 
 @sio.event
-async def remove_tele_signal(sid, data):
+async def remove_telesignal(sid, data):
     item_id = data.get('id')
     if item_id and item_id in telesignals:
         item = telesignals.pop(item_id)
@@ -265,7 +266,7 @@ async def add_telemetry(sid, data):
 
 @sio.event
 async def update_telemetry(sid, data):
-    ioa = data.get('ioa')
+    ioa = int(data['ioa'])
     # Find the item by IOA
     for item_id, item in list(telemetries.items()):
         if item.ioa == ioa:
