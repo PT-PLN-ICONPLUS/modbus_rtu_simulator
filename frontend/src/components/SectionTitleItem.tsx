@@ -6,11 +6,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "./ui/tooltip";
-import { ManageItemDialog, Item } from "./ManageItemDialog";
+import { ManageItemDialog } from "./ManageItemDialog";
+import { Item } from "../lib/items";
 
 interface SectionTitleProps {
   title: string;
-  onAdd: (data: any) => void;
+  onAdd: (data: Item) => void;
   onRemove: (data: { id: string }) => void;
   items: Item[]; // Use the Item type expected by ManageItemDialog
 }
