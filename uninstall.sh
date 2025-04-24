@@ -10,6 +10,7 @@ fi
 
 # Assign arguments to variables
 IMAGE_TAG=$1
+export IMAGE_TAG
 
 # Define image tags and registry
 BACKEND_IMAGE_TAG="modbus-simulator-backend-$IMAGE_TAG"
