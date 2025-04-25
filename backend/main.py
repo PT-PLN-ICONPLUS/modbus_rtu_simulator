@@ -6,7 +6,7 @@ from typing import Dict
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import socketio
-from pymodbus.server import StartTcpServer, StartAsyncTcpServer, ServerStop
+from pymodbus.server import StartTcpServer, ServerStop
 from pymodbus.datastore import ModbusSlaveContext, ModbusServerContext
 from pymodbus.datastore import ModbusSequentialDataBlock
 from pymodbus import FramerType
@@ -22,6 +22,7 @@ from data_models import CircuitBreakerItem, TeleSignalItem, TelemetryItem
 from pymodbus import __version__ as pymodbus_version
 
 # Configure logging
+logging.getLogger("pymodbus").setLevel(logging.CRITICAL)
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -396,6 +397,86 @@ async def poll_ioa_values():
         except Exception as e:
             logger.error(f"Error in IOA polling task: {str(e)}")
             await asyncio.sleep(3)  # Wait before retrying if there's an error
+            
+async def monitor_modbus_changes():
+    """
+    Poll Modbus registers, coils, and inputs every 1 ms.
+    If any value changes (from any source), emit updates to the frontend.
+    """
+    logger.info("Starting Modbus register monitoring task")
+    # Take initial snapshots
+    prev_di = list(store.getValues(2, 0, 5000))
+    prev_co = list(store.getValues(1, 0, 5000))
+    prev_hr = list(store.getValues(3, 0, 7000))
+    prev_ir = list(store.getValues(4, 0, 7000))
+
+    while True:
+        try:
+            changed = False
+
+            # Read current values
+            cur_di = list(store.getValues(2, 0, 5000))
+            cur_co = list(store.getValues(1, 0, 5000))
+            cur_hr = list(store.getValues(3, 0, 7000))
+            cur_ir = list(store.getValues(4, 0, 7000))
+
+            # Check for changes in Discrete Inputs (2)
+            if cur_di != prev_di:
+                changed = True
+                prev_di = cur_di.copy()
+                # Update telesignals/circuit breakers as needed
+                for item in telesignals.values():
+                    new_val = cur_di[item.ioa - 1]
+                    if item.value != new_val:
+                        item.value = new_val
+                for item in circuit_breakers.values():
+                    if item.ioa_cb_status - 1 < len(cur_di):
+                        item.cb_status_open = cur_di[item.ioa_cb_status - 1]
+                    if item.ioa_cb_status_close - 1 < len(cur_di):
+                        item.cb_status_close = cur_di[item.ioa_cb_status_close - 1]
+
+            # Check for changes in Coils (1)
+            if cur_co != prev_co:
+                changed = True
+                prev_co = cur_co.copy()
+                for item in circuit_breakers.values():
+                    if item.ioa_control_open - 1 < len(cur_co):
+                        item.control_open = cur_co[item.ioa_control_open - 1]
+                    if item.ioa_control_close - 1 < len(cur_co):
+                        item.control_close = cur_co[item.ioa_control_close - 1]
+                    if item.ioa_local_remote - 1 < len(cur_co):
+                        item.remote = cur_co[item.ioa_local_remote - 1]
+
+            # Check for changes in Holding Registers (3)
+            if cur_hr != prev_hr:
+                changed = True
+                prev_hr = cur_hr.copy()
+                for item in telemetries.values():
+                    if item.ioa - 1 < len(cur_hr):
+                        # Convert back to float using scale_factor
+                        item.value = cur_hr[item.ioa - 1] * item.scale_factor
+                for item in circuit_breakers.values():
+                    if item.ioa_control_dp and item.ioa_control_dp - 1 < len(cur_hr):
+                        item.control_dp = cur_hr[item.ioa_control_dp - 1]
+
+            # Check for changes in Input Registers (4)
+            if cur_ir != prev_ir:
+                changed = True
+                prev_ir = cur_ir.copy()
+                for item in circuit_breakers.values():
+                    if item.ioa_cb_status_dp and item.ioa_cb_status_dp - 1 < len(cur_ir):
+                        item.cb_status_dp = cur_ir[item.ioa_cb_status_dp - 1]
+
+            # Emit updates if any changes detected
+            if changed:
+                await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
+                await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
+                await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
+
+            await asyncio.sleep(0.001)  # 1 ms
+        except Exception as e:
+            logger.error(f"Error in Modbus monitoring task: {str(e)}")
+            await asyncio.sleep(0.1)
     
 @sio.event
 async def export_data(sid):
@@ -495,15 +576,17 @@ async def lifespan(app: FastAPI):
     logger.info(f"Started MODBUS TCP Server on {MODBUS_HOST}:{MODBUS_PORT}")
 
     # Start the Socket.IO update task
-    task = asyncio.create_task(poll_ioa_values())
-    logger.info("Started Socket.IO simulation task")
+    poll_task = asyncio.create_task(poll_ioa_values())
+    monitor_task = asyncio.create_task(monitor_modbus_changes())
+    logger.info("Started Socket.IO simulation task and MODBUS register monitoring task")
 
     try:
         yield
     finally:
         # Shutdown code
         ServerStop()
-        task.cancel()
+        poll_task.cancel()
+        monitor_task.cancel()
         logger.info("Shutting down Socket.IO simulation task")
 
 # Assign lifespan handler to app
