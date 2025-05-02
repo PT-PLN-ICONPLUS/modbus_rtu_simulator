@@ -23,17 +23,17 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: ${FASTAPI_PORT}
-            - containerPort: 9001
+            - containerPort: ${MODBUS_PORT}
           envFrom:
             - configMapRef:
-                name: iconics-modbus-simulator-backend-${IMAGE_TAG}
+                name: modbus-simulator-backend-${IMAGE_TAG}
           volumeMounts:
-            - name: backend-${IMAGE_TAG}-config
+            - name: modbus-simulator-backend-${IMAGE_TAG}-config
               mountPath: /app/config
       volumes:
-        - name: backend-${IMAGE_TAG}-config
+        - name: modbus-simulator-backend-${IMAGE_TAG}-config
           configMap:
-            name: iconics-modbus-simulator-backend-${IMAGE_TAG}
+            name: modbus-simulator-backend-${IMAGE_TAG}
 
 ---
 apiVersion: v1

@@ -1,12 +1,25 @@
 import { io } from 'socket.io-client';
 
-// Get backend host and port from environment variables or use defaults
-const backendHost = process.env.FASTAPI_HOST || 'localhost';
-const backendPort = process.env.FASTAPI_PORT || '7001';
+const backendHost =
+  import.meta.env.VITE_FASTAPI_HOST || window.location.hostname;
+
+const backendPort =
+  import.meta.env.VITE_FASTAPI_PORT || 
+  (window.location.port ? window.location.port : '30606');
+    
 const socketUrl = `http://${backendHost}:${backendPort}`;
 
 console.log(`Creating socket connection to: ${socketUrl}`);
-const socket = io(socketUrl);
+const socket = io(socketUrl, {
+  transports: ['websocket', 'polling'],
+  reconnectionAttempts: 10,
+  reconnectionDelay: 1000,
+  timeout: 20000,
+  forceNew: true,
+  extraHeaders: {
+    "Access-Control-Allow-Origin": "*"
+  }
+});
 
 socket.on('connect', () => {
   console.log(`Connected to backend socket.io server with ID: ${socket.id}`);

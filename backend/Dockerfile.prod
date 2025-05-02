@@ -1,0 +1,18 @@
+FROM python:3.13-slim
+
+ARG IMAGE_TAG
+ARG FASTAPI_PORT
+ARG MODBUS_PORT
+ENV IMAGE_TAG=${IMAGE_TAG}
+ENV FASTAPI_PORT=${FASTAPI_PORT}
+ENV MODBUS_PORT=${MODBUS_PORT}
+
+WORKDIR /app
+
+COPY backend/ /app
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+EXPOSE ${FASTAPI_PORT} ${MODBUS_PORT}
+
+CMD ["python3", "main.py"]

@@ -26,6 +26,15 @@ echo "Building Docker images..."
 docker build -t $BACKEND_IMAGE_TAG ./backend/
 docker build -t $FRONTEND_IMAGE_TAG ./frontend/
 
+echo "Building Docker images..."
+docker build -t $BACKEND_IMAGE_TAG --build-arg IMAGE_TAG=$IMAGE_TAG --build-arg FASTAPI_PORT=$FASTAPI_PORT --build-arg MODBUS_PORT=$MODBUS_PORT -f ./backend/Dockerfile.prod .
+docker build -t $FRONTEND_IMAGE_TAG \
+  --build-arg IMAGE_TAG=$IMAGE_TAG \
+  --build-arg REACT_PORT=$REACT_PORT \
+  --build-arg VITE_FASTAPI_HOST=$FASTAPI_HOST \
+  --build-arg VITE_FASTAPI_PORT=$FASTAPI_NODEPORT \
+  -f ./frontend/Dockerfile.prod .
+
 echo "Tagging Docker images..."
 docker tag $BACKEND_IMAGE_TAG $REGISTRY/$BACKEND_IMAGE_TAG
 docker tag $FRONTEND_IMAGE_TAG $REGISTRY/$FRONTEND_IMAGE_TAG

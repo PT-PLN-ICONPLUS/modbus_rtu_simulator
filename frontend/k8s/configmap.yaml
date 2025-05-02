@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: iconics-modbus-simulator-frontend-${IMAGE_TAG}
+  name: modbus-simulator-frontend-${IMAGE_TAG}
   namespace: scada-grita
 data:
   REACT_PORT: "${REACT_PORT}"

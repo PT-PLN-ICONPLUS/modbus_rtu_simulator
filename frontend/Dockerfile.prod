@@ -1,0 +1,29 @@
+FROM node:22 AS builder
+
+ARG IMAGE_TAG
+ARG REACT_PORT
+
+ARG VITE_FASTAPI_HOST
+ARG VITE_FASTAPI_PORT
+
+ENV IMAGE_TAG=${IMAGE_TAG}
+ENV REACT_PORT=${REACT_PORT}
+ENV VITE_FASTAPI_HOST=${VITE_FASTAPI_HOST}
+ENV VITE_FASTAPI_PORT=${VITE_FASTAPI_PORT}
+
+COPY frontend/package*.json /frontend-${IMAGE_TAG}/
+
+WORKDIR /frontend-${IMAGE_TAG}
+
+RUN npm install
+
+COPY frontend/ /frontend-${IMAGE_TAG}
+
+RUN npm run build
+
+EXPOSE ${REACT_PORT}
+
+# Create a simple configuration file for setting headers
+RUN echo "{ \"headers\": { \"Content-Security-Policy\": \"default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob:\" } }" > /frontend-${IMAGE_TAG}/preview-config.json
+
+CMD npm run preview -- --host

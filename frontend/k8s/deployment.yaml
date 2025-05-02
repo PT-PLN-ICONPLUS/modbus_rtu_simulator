@@ -22,14 +22,14 @@ spec:
           image: 10.14.73.59/scada/modbus-simulator-frontend-${IMAGE_TAG}
           imagePullPolicy: Always
           ports:
-            - containerPort: 3005
+            - containerPort: ${REACT_PORT}
           envFrom:
             - configMapRef:
-                name: iconics-modbus-simulator-frontend-${IMAGE_TAG}
+                name: modbus-simulator-frontend-${IMAGE_TAG}
       volumes:
-        - name: frontend-${IMAGE_TAG}-config
+        - name: modbus-simulator-frontend-${IMAGE_TAG}-config
           configMap:
-            name: iconics-modbus-simulator-frontend-${IMAGE_TAG}
+            name: modbus-simulator-frontend-${IMAGE_TAG}
 
 ---
 apiVersion: v1
