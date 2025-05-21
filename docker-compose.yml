@@ -24,8 +24,8 @@ services:
     hostname: modbus_frontend_simulator
     ports:
       - "3005:3005"
-    networks:
-      - app-tier
+    # networks:
+    #   - app-tier
     env_file:
       - ./frontend/.env
     environment:

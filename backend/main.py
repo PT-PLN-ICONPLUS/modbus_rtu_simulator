@@ -128,43 +128,50 @@ async def update_circuit_breaker(sid, data):
     # Find the item by IOA
     for item_id, item in list(circuit_breakers.items()):
         if id == item_id:
-            # Update remote status if provided
-            if 'remote' in data:
-                circuit_breakers[item_id].remote = data['remote']
-                store.setValues(1, item.ioa_local_remote - 1, [data['remote']])
+            ioa_changes = {}
+            for ioa_key in ['ioa_cb_status', 'ioa_cb_status_close', 'ioa_control_open', 
+                           'ioa_control_close', 'ioa_local_remote', 
+                           'ioa_cb_status_dp', 'ioa_control_dp']:
+                if ioa_key in data and getattr(item, ioa_key, None) != data.get(ioa_key):
+                    ioa_changes[ioa_key] = (getattr(item, ioa_key), data.get(ioa_key))
+            
+            if ioa_changes:
+                # remove all old ioas
+                store.setValues(2, item.ioa_cb_status - 1, [False])
+                store.setValues(2, item.ioa_cb_status_close - 1, [False])
+                store.setValues(1, item.ioa_control_open - 1, [0])
+                store.setValues(1, item.ioa_control_close - 1, [0])
+                store.setValues(1, item.ioa_local_remote - 1, [False])
                 
-            # Update value if provided
-            if 'cb_status_open' in data:
-                circuit_breakers[item_id].cb_status_open = data['cb_status_open']
-                store.setValues(2, item.ioa_cb_status - 1, [data['cb_status_open']])
-                
-            if 'cb_status_close' in data:
-                circuit_breakers[item_id].cb_status_close = data['cb_status_close']
-                store.setValues(2, item.ioa_cb_status_close - 1, [data['cb_status_close']])
-                
-            if 'cb_status_dp' in data:
-                circuit_breakers[item_id].cb_status_dp = data['cb_status_dp']
-                store.setValues(4, item.ioa_cb_status_dp - 1, [data['cb_status_dp']])
-                
-            if 'control_open' in data:
-                circuit_breakers[item_id].control_open = data['control_open']
-                store.setValues(1, item.ioa_control_open - 1, [data['control_open']])
-                
-            if 'control_close' in data:
-                circuit_breakers[item_id].control_close = data['control_close']
-                store.setValues(1, item.ioa_control_close - 1, [data['control_close']])
-                
-            if 'control_dp' in data:
-                circuit_breakers[item_id].control_dp = data['control_dp']
-                store.setValues(3, item.ioa_control_dp - 1, [data['control_dp']])
-                
-            # Handle SBO mode update if provided
-            if 'is_sbo' in data:
-                circuit_breakers[item_id].is_sbo = data['is_sbo']
-                
-            # Handle double point mode update if provided
-            if 'is_double_point' in data:
-                circuit_breakers[item_id].is_double_point = data['is_double_point']
+                if item.is_double_point and item.ioa_cb_status_dp:
+                    store.setValues(4, item.ioa_cb_status_dp - 1, [0])
+                    store.setValues(3, item.ioa_control_dp - 1, [0])
+                    
+                # update all fields
+                for key, value in data.items():
+                    if hasattr(circuit_breakers[item_id], key) and key != 'id':
+                        setattr(circuit_breakers[item_id], key, value)
+                        
+                add_circuit_breaker(item_id, circuit_breakers[item_id].model_dump())            
+            else:         
+                for key, value in data.items():
+                    if hasattr(circuit_breakers[item_id], key) and key != 'id':
+                        setattr(circuit_breakers[item_id], key, value)
+                        
+                        if key == 'remote':
+                            store.setValues(1, item.ioa_local_remote - 1, [value])
+                        elif key == 'cb_status_open':
+                            store.setValues(2, item.ioa_cb_status - 1, [value])
+                        elif key == 'cb_status_close':
+                            store.setValues(2, item.ioa_cb_status_close - 1, [value])
+                        elif key == 'control_open':
+                            store.setValues(1, item.ioa_control_open - 1, [value])
+                        elif key == 'control_close':
+                            store.setValues(1, item.ioa_control_close - 1, [value])
+                        elif key == 'control_dp':
+                            store.setValues(3, item.ioa_control_dp - 1, [value])
+                        elif key == 'cb_status_dp':
+                            store.setValues(4, item.ioa_cb_status_dp - 1, [value])     
             
             logger.info(f"Updated circuit breaker: {item.name}, data: {circuit_breakers[item_id].model_dump()}")
             await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
@@ -211,19 +218,28 @@ async def update_telesignal(sid, data):
     ioa = int(data['ioa'])
     # Find the item by IOA
     for item_id, item in list(telesignals.items()):
-        if item.ioa == ioa:
-            # Update auto_mode if provided
-            if 'auto_mode' in data:
-                telesignals[item_id].auto_mode = data['auto_mode']
-                logger.info(f"Telesignal set auto_mode to {data['auto_mode']} name: {item.name} (IOA: {item.ioa})")
+        if id == item_id:
+            # Check if IOA is being updated
+            old_ioa = item.ioa
+            new_ioa = data.get('ioa')
             
-            # Update value if provided
-            if 'value' in data:
-                new_value = data['value']
-                telesignals[item_id].value = new_value
-                store.setValues(1, item.ioa - 1, [new_value])
-                logger.info(f"Telesignal updated: {item.name} (IOA: {item.ioa}) value: {item.value}")
+            # Handle IOA update if needed
+            if new_ioa is not None and old_ioa != new_ioa:
+                # Remove old IOA
+                store.setValues(1, old_ioa - 1, [0])  # Reset old IOA
+
+                store.setValues(1, new_ioa - 1, [item.value])
+
+            # Update all fields that are provided in the data
+            for key, value in data.items():
+                if hasattr(telesignals[item_id], key) and key != 'id':
+                    setattr(telesignals[item_id], key, value)
+                    
+                    # Update IEC server for the IOA value
+                    if key == 'value':
+                        store.setValues(1, item.ioa - 1, [value])
             
+            logger.info(f"Updated telesignal: {item.name}, data: {telesignals[item_id].model_dump()}")
             await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
             return {"status": "success"}
     
@@ -289,6 +305,56 @@ async def update_telemetry(sid, data):
     
     return {"status": "error", "message": "Telemetry not found"}
 
+@sio.event
+async def update_telemetry_ioa(sid, data):
+    id = data.get('id')
+    
+    if id:
+        for item_id, item in list(telemetries.items()):
+            if id == item_id:
+                # Check if IOA is being updated
+                old_ioa = item.ioa
+                new_ioa = data.get('ioa')
+                
+                # Handle IOA update if needed
+                if new_ioa is not None and old_ioa != new_ioa:
+                    # Remove old IOA
+                    store.setValues(3, old_ioa - 1, [0])
+                    
+                    scale_factor = data.get('scale_factor', item.scale_factor)
+                    # TODO UPDATE IN THE FUTURE TO HANDLE FLOATING POINTS
+                    # if scale_factor >= 1:
+                    #     value_type = MeasuredValueScaled
+                    #     scaled_value = int(item.value / scale_factor)
+                    # else:
+                    #     value_type = 
+                    #     scaled_value = item.value
+                    scaled_value = int(item.value / scale_factor)
+                    
+                    store.setValues(3, new_ioa - 1, [scaled_value])
+                    
+                    # update auto_mode and other metadata for new ioa
+                    telemetries[item_id].scale_factor = scale_factor
+                    telemetries[item_id].auto_mode = data.get('auto_mode', item.auto_mode)
+                    telemetries[item_id].min_value = data.get('min_value', item.min_value)
+                    telemetries[item_id].max_value = data.get('max_value', item.max_value)
+                    
+                    
+                # Update all fields that are provided in the data
+                for key, value in data.items():
+                    if hasattr(telemetries[item_id], key) and key != 'id':
+                        setattr(telemetries[item_id], key, value)
+                        
+                        # Update IEC server for the IOA value
+                        if key == 'value':
+                            scaled_value = int(item.value / item.scale_factor)
+                            store.setValues(3, item.ioa - 1, [scaled_value])
+                            
+                logger.info(f"Updated telemetry: {item.name}, data: {telemetries[item_id].model_dump()}")
+                await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
+                return {"status": "success"}
+    return {"status": "error", "message": "Telemetry not found"}
+        
 @sio.event
 async def remove_telemetry(sid, data):
     item_id = data.get('id')
@@ -546,6 +612,38 @@ async def import_data(sid, data):
         logger.error(f"Error importing data: {e}")
         await sio.emit('import_data_error', {"error": "Failed to import data"}, room=sid)
             
+@sio.event
+async def update_order(sid, data):
+    item_type = data.get('type')
+    item_ids = data.get('items', [])
+    
+    if item_type == 'circuit_breakers':
+        # Reorder circuit_breakers based on item_ids
+        global circuit_breakers
+        ordered_items = {}
+        for id in item_ids:
+            if id in circuit_breakers:
+                ordered_items[id] = circuit_breakers[id]
+        circuit_breakers = ordered_items
+        
+    elif item_type == 'telesignals':
+        # Reorder telesignals
+        global telesignals
+        ordered_items = {}
+        for id in item_ids:
+            if id in telesignals:
+                ordered_items[id] = telesignals[id]
+        telesignals = ordered_items
+        
+    elif item_type == 'telemetries':
+        # Reorder telemetries
+        global telemetries
+        ordered_items = {}
+        for id in item_ids:
+            if id in telemetries:
+                ordered_items[id] = telemetries[id]
+        telemetries = ordered_items    
+        
 device = ModbusDeviceIdentification(
         info_name={
             "VendorName": "Pymodbus",

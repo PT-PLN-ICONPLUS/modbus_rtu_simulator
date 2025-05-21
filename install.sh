@@ -23,10 +23,6 @@ FRONTEND_IMAGE_TAG="modbus-simulator-frontend-$IMAGE_TAG"
 REGISTRY="10.14.73.59/scada"
 
 echo "Building Docker images..."
-docker build -t $BACKEND_IMAGE_TAG ./backend/
-docker build -t $FRONTEND_IMAGE_TAG ./frontend/
-
-echo "Building Docker images..."
 docker build -t $BACKEND_IMAGE_TAG --build-arg IMAGE_TAG=$IMAGE_TAG --build-arg FASTAPI_PORT=$FASTAPI_PORT --build-arg MODBUS_PORT=$MODBUS_PORT -f ./backend/Dockerfile.prod .
 docker build -t $FRONTEND_IMAGE_TAG \
   --build-arg IMAGE_TAG=$IMAGE_TAG \
