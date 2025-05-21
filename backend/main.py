@@ -152,7 +152,7 @@ async def update_circuit_breaker(sid, data):
                     if hasattr(circuit_breakers[item_id], key) and key != 'id':
                         setattr(circuit_breakers[item_id], key, value)
                         
-                add_circuit_breaker(item_id, circuit_breakers[item_id].model_dump())            
+                await add_circuit_breaker(item_id, item.model_dump())            
             else:         
                 for key, value in data.items():
                     if hasattr(circuit_breakers[item_id], key) and key != 'id':
@@ -215,7 +215,7 @@ async def add_telesignal(sid, data):
 
 @sio.event
 async def update_telesignal(sid, data):
-    ioa = int(data['ioa'])
+    id = data.get('id')
     # Find the item by IOA
     for item_id, item in list(telesignals.items()):
         if id == item_id:
@@ -229,15 +229,21 @@ async def update_telesignal(sid, data):
                 store.setValues(1, old_ioa - 1, [0])  # Reset old IOA
 
                 store.setValues(1, new_ioa - 1, [item.value])
+                
+                telesignals[item_id].ioa = new_ioa
+                telesignals[item_id].name = data.get('name', item.name)
+                telesignals[item_id].interval = data.get('interval', item.interval)
+                telesignals[item_id].auto_mode = data.get('auto_mode', item.auto_mode)
 
             # Update all fields that are provided in the data
             for key, value in data.items():
                 if hasattr(telesignals[item_id], key) and key != 'id':
                     setattr(telesignals[item_id], key, value)
-                    
+
                     # Update IEC server for the IOA value
                     if key == 'value':
                         store.setValues(1, item.ioa - 1, [value])
+                        telesignals[item_id].value = value
             
             logger.info(f"Updated telesignal: {item.name}, data: {telesignals[item_id].model_dump()}")
             await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
@@ -283,30 +289,6 @@ async def add_telemetry(sid, data):
 
 @sio.event
 async def update_telemetry(sid, data):
-    ioa = int(data['ioa'])
-    # Find the item by IOA
-    for item_id, item in list(telemetries.items()):
-        if item.ioa == ioa:
-            # Update auto_mode if provided
-            if 'auto_mode' in data:
-                telemetries[item_id].auto_mode = data['auto_mode']
-                logger.info(f"Telemetry set auto_mode to {data['auto_mode']} name: {item.name} (IOA: {item.ioa})")
-            
-            # Update value if provided
-            if 'value' in data:
-                new_value = data['value']
-                telemetries[item_id].value = new_value
-                scaled_value = int(round(new_value / item.scale_factor))
-                store.setValues(3, item.ioa - 1, [scaled_value])
-                logger.info(f"Telemetry updated: {item.name} (IOA: {item.ioa}) value: {item.value}")
-            
-            await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
-            return {"status": "success"}
-    
-    return {"status": "error", "message": "Telemetry not found"}
-
-@sio.event
-async def update_telemetry_ioa(sid, data):
     id = data.get('id')
     
     if id:
@@ -334,10 +316,14 @@ async def update_telemetry_ioa(sid, data):
                     store.setValues(3, new_ioa - 1, [scaled_value])
                     
                     # update auto_mode and other metadata for new ioa
-                    telemetries[item_id].scale_factor = scale_factor
+                    telemetries[item_id].ioa = new_ioa
+                    telemetries[item_id].name = data.get('name', item.name)
+                    telemetries[item_id].interval = data.get('interval', item.interval)
+                    telemetries[item_id].unit = data.get('unit', item.unit)
                     telemetries[item_id].auto_mode = data.get('auto_mode', item.auto_mode)
                     telemetries[item_id].min_value = data.get('min_value', item.min_value)
-                    telemetries[item_id].max_value = data.get('max_value', item.max_value)
+                    telemetries[item_id].max_value = data.get('max_value', item.max_value)                                        
+                    telemetries[item_id].scale_factor = scale_factor
                     
                     
                 # Update all fields that are provided in the data
