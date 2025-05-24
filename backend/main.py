@@ -21,6 +21,12 @@ from pydantic import BaseModel
 from data_models import CircuitBreakerItem, TeleSignalItem, TelemetryItem
 from pymodbus import __version__ as pymodbus_version
 
+# MODBUS MAPPING
+# 1. Coils Status ADRESS 0 - 9999
+# 2. Discrete Inputs ADRESS 10000 - 19999
+# 3. Holding Registers ADRESS 20000 - 29999
+# 4. Input Registers ADRESS 30000 - 39999
+
 # Configure logging
 logging.getLogger("pymodbus").setLevel(logging.CRITICAL)
 logging.basicConfig(
