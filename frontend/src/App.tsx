@@ -3,7 +3,7 @@ import socket from './socket';
 import { CircuitBreaker } from './components/CircuitBreakerItem';
 import { TeleSignal } from './components/TeleSignalItem';
 import { Telemetry } from './components/TeleMetryItem';
-import { CircuitBreakerItem, TeleSignalItem, TelemetryItem } from './lib/items';
+import { CircuitBreakerItem, TapChangerItem, TeleSignalItem, TelemetryItem } from './lib/items';
 
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -17,20 +17,24 @@ import { PiExportBold } from "react-icons/pi";
 import { ManageItemDialog } from './components/ManageItemDialog';
 import { DeleteConfirmDialog } from './components/DeleteConfirmDialog';
 import { TbDragDrop } from "react-icons/tb";
+import { TapChanger } from './components/TapChangerItem';
 
 function App() {
   const [circuitBreakers, setCircuitBreakers] = useState<CircuitBreakerItem[]>([]);
   const [teleSignals, setTeleSignals] = useState<TeleSignalItem[]>([]);
   const [teleMetries, setTeleMetries] = useState<TelemetryItem[]>([]);
+  const [tapChangers, setTapChangers] = useState<TapChangerItem[]>([]);
+
+  const [combinedOrder, setCombinedOrder] = useState<{ id: string; type: string }[]>([]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [selectedItemType, setSelectedItemType] = useState<'circuit_breaker' | 'telesignal' | 'telemetry' | null>(null);
-  const [selectedItemToEdit, setSelectedItemToEdit] = useState<any>(null);
+  const [selectedItemType, setSelectedItemType] = useState<'circuit_breaker' | 'telesignal' | 'telemetry' | 'tap_changer' | null>(null);
+  const [selectedItemToEdit, setSelectedItemToEdit] = useState<unknown>(null);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry' } | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry' | 'tap_changer' | null } | null>(null);
 
   useEffect(() => {
     // Emit 'get_initial_data' to request initial data
@@ -41,6 +45,7 @@ function App() {
       circuit_breakers: CircuitBreakerItem[];
       telesignals: TeleSignalItem[];
       telemetries: TelemetryItem[];
+      tap_changers: TapChangerItem[];
     }) => {
       console.log('Initial data received:', response);
 
@@ -48,6 +53,14 @@ function App() {
       setCircuitBreakers(response.circuit_breakers || []);
       setTeleSignals(response.telesignals || []);
       setTeleMetries(response.telemetries || []);
+      setTapChangers(response.tap_changers || []);
+
+      // Initialize combined order properly
+      const initialCombinedOrder = [
+        ...(response.circuit_breakers || []).map(item => ({ id: item.id, type: 'circuit_breaker' })),
+        ...(response.tap_changers || []).map(item => ({ id: item.id, type: 'tap_changer' }))
+      ];
+      setCombinedOrder(initialCombinedOrder);
     });
 
     // Handle errors
@@ -79,10 +92,16 @@ function App() {
       setTeleMetries(data);
     });
 
+    socket.on('tap_changers', (data: TapChangerItem[]) => {
+      console.log('Received tap changers update:', data);
+      setTapChangers(data);
+    });
+
     return () => {
       socket.off('circuit_breakers');
       socket.off('telesignals');
       socket.off('telemetries');
+      socket.off('tap_changers');
     };
   }, []);
 
@@ -107,15 +126,17 @@ function App() {
     setSelectedItemToEdit(null);
   };
 
-  const handleEditItem = (id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry') => {
+  const handleEditItem = (id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry' | 'tap_changer') => {
     // Find the item to edit
     let itemToEdit;
     if (type === 'circuit_breaker') {
       itemToEdit = circuitBreakers.find(item => item.id === id);
     } else if (type === 'telesignal') {
       itemToEdit = teleSignals.find(item => item.id === id);
-    } else {
+    } else if (type === 'telemetry') {
       itemToEdit = teleMetries.find(item => item.id === id);
+    } else {
+      itemToEdit = tapChangers.find(item => item.id === id);
     }
 
     if (itemToEdit) {
@@ -126,7 +147,7 @@ function App() {
     }
   };
 
-  const handleDeleteItem = (id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry') => {
+  const handleDeleteItem = (id: string, type: 'circuit_breaker' | 'telesignal' | 'telemetry' | 'tap_changer') => {
     // Set up the delete dialog with the item's data
     setItemToDelete({ id, type });
     setDeleteDialogOpen(true);
@@ -139,8 +160,10 @@ function App() {
       return circuitBreakers.find(item => item.id === itemToDelete.id)?.name || "";
     } else if (itemToDelete.type === 'telesignal') {
       return teleSignals.find(item => item.id === itemToDelete.id)?.name || "";
-    } else {
+    } else if (itemToDelete.type === 'telemetry') {
       return teleMetries.find(item => item.id === itemToDelete.id)?.name || "";
+    } else {
+      return tapChangers.find(item => item.id === itemToDelete.id)?.name || "";
     }
   };
 
@@ -151,8 +174,10 @@ function App() {
         socket.emit('remove_circuit_breaker', { id: itemToDelete.id });
       } else if (itemToDelete.type === 'telesignal') {
         socket.emit('remove_telesignal', { id: itemToDelete.id });
-      } else {
+      } else if (itemToDelete.type === 'telemetry') {
         socket.emit('remove_telemetry', { id: itemToDelete.id });
+      } else {
+        socket.emit('remove_tap_changer', { id: itemToDelete.id });
       }
     }
     setDeleteDialogOpen(false);
@@ -165,17 +190,19 @@ function App() {
     setItemToDelete(null);
   };
 
-  const addComponent = (data: CircuitBreakerItem | TeleSignalItem | TelemetryItem) => {
+  const addComponent = (data: CircuitBreakerItem | TeleSignalItem | TelemetryItem | TapChangerItem) => {
     if ('ioa_cb_status' in data) {
       addCircuitBreaker(data as CircuitBreakerItem);
     } else if ('ioa' in data && !('unit' in data)) {
       addTeleSignal(data as TeleSignalItem);
     } else if ('ioa' in data && 'unit' in data) {
       addTelemetry(data as TelemetryItem);
+    } else {
+      addTapChanger(data as TapChangerItem);
     }
   };
 
-  const updateComponent = (data: CircuitBreakerItem | TeleSignalItem | TelemetryItem) => {
+  const updateComponent = (data: CircuitBreakerItem | TeleSignalItem | TelemetryItem | TapChangerItem) => {
     if ('ioa_cb_status' in data) {
       console.log("CB!");
       console.log(data);
@@ -232,6 +259,22 @@ function App() {
         setTeleMetries(prev => prev.map(item =>
           item.id === data.id ? updatedItem : item
         ));
+      } else {
+        const originalItem = tapChangers.find(item => item.id === data.id);
+        if (originalItem) {
+          // Merge the original item with the updated data
+          const updatedItem = { ...originalItem, ...data };
+
+          console.log(updatedItem);
+
+          // Send the complete updated item to the server
+          socket.emit('update_tap_changer', updatedItem);
+
+          // Update the local state
+          setTapChangers(prev => prev.map(item =>
+            item.id === data.id ? updatedItem : item
+          ));
+        }
       }
     }
   };
@@ -246,11 +289,16 @@ function App() {
       ioa_control_close: data.ioa_control_close,
       ioa_cb_status_dp: data.ioa_cb_status_dp,
       ioa_control_dp: data.ioa_control_dp,
-      ioa_local_remote: data.ioa_local_remote,
+      ioa_local_remote_sp: data.ioa_local_remote_sp,
+      ioa_local_remote_dp: data.ioa_local_remote_dp,
       is_sbo: false,
-      is_double_point: data.is_double_point,
-
-      remote: 0,
+      has_double_point: data.has_double_point || false,
+      is_dp_mode: false,
+      is_sdp_mode: false,
+      has_local_remote_dp: data.has_local_remote_dp || false,
+      is_local_remote_dp_mode: false,
+      remote_sp: 1,
+      remote_dp: 2,
       cb_status_open: 0,
       cb_status_close: 0,
       cb_status_dp: 0,
@@ -307,6 +355,35 @@ function App() {
     }
   };
 
+  const addTapChanger = (data: TapChangerItem) => {
+    const newItem: TapChangerItem = {
+      id: Date.now().toString(),
+      name: data.name,
+      ioa_value: data.ioa_value,
+      value: data.value,
+      value_high_limit: data.value_high_limit,
+      value_low_limit: data.value_low_limit,
+      ioa_high_limit: data.ioa_high_limit,
+      ioa_low_limit: data.ioa_low_limit,
+      interval: data.interval,
+      auto_mode: false,
+      ioa_status_auto_manual: data.ioa_status_auto_manual,
+      ioa_command_auto_manual: data.ioa_command_auto_manual,
+      ioa_command_raise_lower: data.ioa_command_raise_lower,
+      ioa_status_raise_lower: data.ioa_status_raise_lower,
+      is_local_remote: 1,
+      ioa_local_remote: data.ioa_local_remote
+    };
+
+    if (socket) {
+      socket.emit('add_tap_changer', newItem, (response: unknown) => {
+        console.log('Add tap changer response:', response);
+      });
+
+      setTapChangers((prev) => [...prev, newItem]);
+    }
+  };
+
   const exportData = () => {
     socket.emit('export_data');
 
@@ -314,7 +391,7 @@ function App() {
       console.log('Exported data:', data);
 
       // Validate the structure of the data
-      if (!data.circuit_breakers || !data.telesignals || !data.telemetries) {
+      if (!data.circuit_breakers || !data.telesignals || !data.telemetries || !data.tap_changers) {
         alert('Invalid data structure received from the server');
         return;
       }
@@ -357,23 +434,55 @@ function App() {
     reader.readAsText(file);
   };
 
-  const handleDragEndCircuitBreakers = (event: DragEndEvent) => {
+  const handleDragEndCombined = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (over && active.id !== over.id) {
-      setCircuitBreakers((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
+    if (!over || active.id === over.id) {
+      return;
+    }
 
-        const newItems = arrayMove(items, oldIndex, newIndex);
+    // Get the current order or create it from existing items
+    const currentOrder = combinedOrder.length > 0
+      ? combinedOrder
+      : [
+        ...circuitBreakers.map(item => ({ id: item.id, type: 'circuit_breaker' })),
+        ...tapChangers.map(item => ({ id: item.id, type: 'tap_changer' }))
+      ];
 
-        // Emit the new order to backend if needed
-        socket.emit('update_order', {
-          type: 'circuit_breakers',
-          items: newItems.map(item => item.id)
-        });
+    const activeIndex = currentOrder.findIndex(item => item.id === active.id);
+    const overIndex = currentOrder.findIndex(item => item.id === over.id);
 
-        return newItems;
+    if (activeIndex !== -1 && overIndex !== -1) {
+      // Reorder the combined array
+      const reorderedItems = arrayMove(currentOrder, activeIndex, overIndex);
+
+      // Split back into separate arrays while maintaining original item data
+      const newCircuitBreakers: CircuitBreakerItem[] = [];
+      const newTapChangers: TapChangerItem[] = [];
+
+      reorderedItems.forEach(orderItem => {
+        if (orderItem.type === 'circuit_breaker') {
+          const originalItem = circuitBreakers.find(cb => cb.id === orderItem.id);
+          if (originalItem) {
+            newCircuitBreakers.push(originalItem);
+          }
+        } else if (orderItem.type === 'tap_changer') {
+          const originalItem = tapChangers.find(tc => tc.id === orderItem.id);
+          if (originalItem) {
+            newTapChangers.push(originalItem);
+          }
+        }
+      });
+
+      // Update all states in the correct order
+      setCombinedOrder(reorderedItems);
+      setCircuitBreakers(newCircuitBreakers);
+      setTapChangers(newTapChangers);
+
+      // Emit the new combined order to backend
+      socket.emit('update_order', {
+        type: 'combined',
+        items: reorderedItems
       });
     }
   };
@@ -425,7 +534,7 @@ function App() {
       <div className="flex justify-between items-center py-3 px-4 border-b">
         <div className="flex items-center space-x-2">
           <img src="/modbus-logo.ico" alt="Modbus Icon" className="w-6 h-6" />
-          <p className="text-2xl font-bold">Modbus Server Simulator</p>
+          <p className="text-2xl font-bold">Modbus RTU Simulator</p>
         </div>
         <div className="flex space-x-2">
           <TooltipProvider>
@@ -529,35 +638,61 @@ function App() {
 
       <div className="flex flex-row w-full">
 
-        {/* Circuit Breaker Section */}
+        {/* Circuit Breaker and Tap Changer Section */}
         <div className="w-1/3 border-2 flex flex-col h-[95vh]">
           <div className="flex flex-row border-b-2 justify-center">
-            <h2 className="text-xl font-semibold m-2">Circuit Breakers</h2>
+            <h2 className="text-xl font-semibold m-2">Circuit Breakers & Tap Changers</h2>
           </div>
           <div className="flex-1 overflow-y-auto">
             <DndContext
               collisionDetection={closestCenter}
-              onDragEnd={handleDragEndCircuitBreakers}
+              onDragEnd={handleDragEndCombined}
             >
               <SortableContext
-                items={circuitBreakers.map(item => item.id)}
+                items={combinedOrder.length > 0 ? combinedOrder.map(item => item.id) : [...circuitBreakers.map(item => item.id), ...tapChangers.map(item => item.id)]}
                 strategy={verticalListSortingStrategy}
               >
-                {circuitBreakers.map(item => (
-                  <SortableItem
-                    key={item.id}
-                    id={item.id}
-                    isDraggingEnabled={isDragging}
-                  >
-                    <CircuitBreaker
-                      key={item.id}
-                      {...item}
-                      isEditing={isEditing}
-                      onEdit={(id) => handleEditItem(id, 'circuit_breaker')}
-                      onDelete={(id) => handleDeleteItem(id, 'circuit_breaker')}
-                    />
-                  </SortableItem>
-                ))}
+                {(combinedOrder.length > 0 ? combinedOrder : [
+                  ...circuitBreakers.map(item => ({ id: item.id, type: 'circuit_breaker' })),
+                  ...tapChangers.map(item => ({ id: item.id, type: 'tap_changer' }))
+                ]).map(orderItem => {
+                  if (orderItem.type === 'circuit_breaker') {
+                    const item = circuitBreakers.find(cb => cb.id === orderItem.id);
+                    return item ? (
+                      <SortableItem
+                        key={item.id}
+                        id={item.id}
+                        isDraggingEnabled={isDragging}
+                      >
+                        <CircuitBreaker
+                          key={item.id}
+                          {...item}
+                          isEditing={isEditing}
+                          onEdit={(id) => handleEditItem(id, 'circuit_breaker')}
+                          onDelete={(id) => handleDeleteItem(id, 'circuit_breaker')}
+                        />
+                      </SortableItem>
+                    ) : null;
+                  } else if (orderItem.type === 'tap_changer') {
+                    const item = tapChangers.find(tc => tc.id === orderItem.id);
+                    return item ? (
+                      <SortableItem
+                        key={item.id}
+                        id={item.id}
+                        isDraggingEnabled={isDragging}
+                      >
+                        <TapChanger
+                          key={item.id}
+                          {...item}
+                          isEditing={isEditing}
+                          onEdit={(id) => handleEditItem(id, 'tap_changer')}
+                          onDelete={(id) => handleDeleteItem(id, 'tap_changer')}
+                        />
+                      </SortableItem>
+                    ) : null;
+                  }
+                  return null;
+                })}
               </SortableContext>
             </DndContext>
           </div>
@@ -639,7 +774,8 @@ function App() {
         action={selectedItemToEdit ? "edit" : "add"}
         items={selectedItemType === 'circuit_breaker' ? circuitBreakers :
           selectedItemType === 'telesignal' ? teleSignals :
-            selectedItemType === 'telemetry' ? teleMetries : []}
+            selectedItemType === 'telemetry' ? teleMetries :
+              selectedItemType === 'tap_changer' ? tapChangers : []}
         itemToEdit={selectedItemToEdit}
         onSubmit={selectedItemToEdit ? updateComponent : addComponent}
       />

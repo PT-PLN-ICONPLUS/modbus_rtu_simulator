@@ -18,7 +18,7 @@ import logging
 from contextlib import asynccontextmanager
 import uvicorn
 from pydantic import BaseModel
-from data_models import CircuitBreakerItem, TeleSignalItem, TelemetryItem
+from data_models import CircuitBreakerItem, TeleSignalItem, TelemetryItem, TapChangerItem
 from pymodbus import __version__ as pymodbus_version
 
 # MODBUS MAPPING
@@ -57,6 +57,7 @@ app.add_middleware(
 circuit_breakers: Dict[str, CircuitBreakerItem] = {}
 telesignals: Dict[str, TeleSignalItem] = {}
 telemetries: Dict[str, TelemetryItem] = {}
+tap_changers: Dict[str, TapChangerItem] = {}
 
 # Initialize MODBUS Data Store with sufficient space
 store = ModbusSlaveContext(
@@ -75,6 +76,7 @@ async def connect(sid, environ):
     await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()], room=sid)
     await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()], room=sid)
     await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()], room=sid)
+    await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()], room=sid)
 
 @sio.event
 async def disconnect(sid):
@@ -88,6 +90,7 @@ async def get_initial_data(sid):
             "circuit_breakers": [item.model_dump() for item in circuit_breakers.values()],
             "telesignals": [item.model_dump() for item in telesignals.values()],
             "telemetries": [item.model_dump() for item in telemetries.values()],
+            "tap_changers": [item.model_dump() for item in tap_changers.values()],
         }
         await sio.emit('get_initial_data_response', data, room=sid)
         logger.info(f"Initial data sent to {sid}")
@@ -102,25 +105,22 @@ async def add_circuit_breaker(sid, data):
     
     try:
         # Update Modbus registers with initial states
-        # 1. CB Status Single Open (Discrete Input) - Register type 2
         store.setValues(2, item.ioa_cb_status - 1, [False])
-        
-        # 2. CB Status Single Close (Discrete Input) - Register type 2
         store.setValues(2, item.ioa_cb_status_close - 1, [False])
         
-        # 3. CB Status Double Point (Input Register) if enabled - Register type 4
-        if item.is_double_point and item.ioa_cb_status_dp:
-            store.setValues(4, item.ioa_cb_status_dp - 1, [0])
-            # Control Double (Holding Register) if enabled
-            store.setValues(3, item.ioa_control_dp - 1, [0])  # Initially off
-        
-        # 4. Control Open/Close (Coils) - Register type 1
         store.setValues(1, item.ioa_control_open - 1, [0])  # Initially off
         store.setValues(1, item.ioa_control_close - 1, [0])  # Initially off
         
-        # 6. Local/Remote (Coil) - Register type 1
-        store.setValues(1, item.ioa_local_remote - 1, [item.remote])
+        if item.has_double_point:
+            if item.ioa_cb_status_dp is not None:
+                store.setValues(2, item.ioa_cb_status_dp - 1, [False])
+            if item.ioa_control_dp is not None:
+                store.setValues(3, item.ioa_control_dp - 1, [0])
         
+        store.setValues(1, item.ioa_local_remote_sp - 1, [item.remote_sp])  # Set remote/local mode
+        if item.has_local_remote_dp:
+            store.setValues(1, item.ioa_local_remote_dp - 1, [item.remote_dp])
+            
         logger.info(f"Added circuit breaker: {item.name} with IOA CB status open (for unique value): {item.ioa_cb_status}")
         await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
         return {"status": "success", "message": f"Added circuit breaker {item.name}"}
@@ -136,7 +136,7 @@ async def update_circuit_breaker(sid, data):
         if id == item_id:
             ioa_changes = {}
             for ioa_key in ['ioa_cb_status', 'ioa_cb_status_close', 'ioa_control_open', 
-                           'ioa_control_close', 'ioa_local_remote', 
+                           'ioa_control_close', 'ioa_local_remote_sp', 'ioa_local_remote_dp', 
                            'ioa_cb_status_dp', 'ioa_control_dp']:
                 if ioa_key in data and getattr(item, ioa_key, None) != data.get(ioa_key):
                     ioa_changes[ioa_key] = (getattr(item, ioa_key), data.get(ioa_key))
@@ -147,11 +147,16 @@ async def update_circuit_breaker(sid, data):
                 store.setValues(2, item.ioa_cb_status_close - 1, [False])
                 store.setValues(1, item.ioa_control_open - 1, [0])
                 store.setValues(1, item.ioa_control_close - 1, [0])
-                store.setValues(1, item.ioa_local_remote - 1, [False])
                 
-                if item.is_double_point and item.ioa_cb_status_dp:
-                    store.setValues(4, item.ioa_cb_status_dp - 1, [0])
-                    store.setValues(3, item.ioa_control_dp - 1, [0])
+                if item.has_double_point:
+                    if item.ioa_cb_status_dp is not None:
+                        store.setValues(4, item.ioa_cb_status_dp - 1, [0])
+                    if item.ioa_control_dp is not None:
+                        store.setValues(3, item.ioa_control_dp - 1, [0])
+                        
+                store.setValues(1, item.ioa_local_remote_sp - 1, [False])  # Reset remote/local mode
+                if item.has_local_remote_dp:
+                    store.setValues(1, item.ioa_local_remote_dp - 1, [False])
                     
                 # update all fields
                 for key, value in data.items():
@@ -164,20 +169,22 @@ async def update_circuit_breaker(sid, data):
                     if hasattr(circuit_breakers[item_id], key) and key != 'id':
                         setattr(circuit_breakers[item_id], key, value)
                         
-                        if key == 'remote':
-                            store.setValues(1, item.ioa_local_remote - 1, [value])
+                        if key == 'remote_sp':
+                            store.setValues(1, item.ioa_local_remote_sp - 1, [value])
+                        elif key == 'remote_dp':
+                            store.setValues(1, item.ioa_local_remote_dp - 1, [value])
                         elif key == 'cb_status_open':
                             store.setValues(2, item.ioa_cb_status - 1, [value])
                         elif key == 'cb_status_close':
                             store.setValues(2, item.ioa_cb_status_close - 1, [value])
+                        elif key == 'cb_status_dp':
+                            store.setValues(4, item.ioa_cb_status_dp - 1, [value])
                         elif key == 'control_open':
                             store.setValues(1, item.ioa_control_open - 1, [value])
                         elif key == 'control_close':
                             store.setValues(1, item.ioa_control_close - 1, [value])
                         elif key == 'control_dp':
-                            store.setValues(3, item.ioa_control_dp - 1, [value])
-                        elif key == 'cb_status_dp':
-                            store.setValues(4, item.ioa_cb_status_dp - 1, [value])     
+                            store.setValues(3, item.ioa_control_dp - 1, [value])   
             
             logger.info(f"Updated circuit breaker: {item.name}, data: {circuit_breakers[item_id].model_dump()}")
             await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
@@ -195,10 +202,16 @@ async def remove_circuit_breaker(sid, data):
         store.setValues(2, item.ioa_cb_status_close - 1, [False])
         store.setValues(1, item.ioa_control_open - 1, [0])
         store.setValues(1, item.ioa_control_close - 1, [0])
-        if item.is_double_point and item.ioa_cb_status_dp:
-            store.setValues(4, item.ioa_cb_status_dp - 1, [0])
-            store.setValues(3, item.ioa_control_dp - 1, [0])
-        store.setValues(1, item.ioa_local_remote - 1, [False])
+        
+        if item.has_double_point:
+            if item.ioa_cb_status_dp is not None:
+                store.setValues(4, item.ioa_cb_status_dp - 1, [0])
+            if item.ioa_control_dp is not None:
+                store.setValues(3, item.ioa_control_dp - 1, [0])
+        
+        store.setValues(1, item.ioa_local_remote_sp - 1, [False])  # Reset remote/local mode
+        if item.has_local_remote_dp:
+            store.setValues(1, item.ioa_local_remote_dp - 1, [False])
         
         logger.info(f"Removed circuit breaker: {item.name}")
         await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
@@ -361,6 +374,101 @@ async def remove_telemetry(sid, data):
         return {"status": "success", "message": f"Removed telemetry {item.name}"}
     return {"status": "error", "message": "Telemetry not found"}
 
+@sio.event
+async def add_tap_changer(sid, data):
+    item = TapChangerItem(**data)
+    tap_changers[item.id] = item
+    
+    try:
+        store.setValues(3, item.ioa_value - 1, [item.value])  # Holding register for value
+        store.setValues(3, item.ioa_high_limit - 1, [item.value_high_limit])  # Holding register for high limit
+        store.setValues(3, item.ioa_low_limit - 1, [item.value_low_limit])  # Holding register for low limit
+        store.setValues(1, item.ioa_status_raise_lower - 1, [0])  # Discrete input for raise/lower status
+        store.setValues(1, item.ioa_status_auto_manual - 1, [item.auto_mode])  # Discrete input for auto/manual status
+        store.setValues(1, item.ioa_local_remote - 1, [item.is_local_remote])  # Discrete input for local/remote status
+        store.setValues(1, item.ioa_command_raise_lower - 1, [0])  # Coil for raise/lower command
+        store.setValues(1, item.ioa_command_auto_manual - 1, [item.auto_mode])  # Coil for auto/manual command
+        
+        logger.info(f"Added tap changer: {item.name} with IOA Value {item.ioa_value}")
+        await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()])
+    except Exception as e:
+        logger.error(f"Error adding tap changer: {e}")
+        return {"status": "error", "message": "Failed to add tap changer"}    
+    
+    
+@sio.event
+async def update_tap_changer(sid, data):
+    id = data.get('id')
+    
+    if id:
+        for item_id, item in list(tap_changers.items()):
+            if id == item_id:
+                # Check if IOA is being updated
+                old_ioa_value = item.ioa_value
+                new_ioa_value = data.get('ioa_value')
+                
+                # Handle IOA update if needed
+                if new_ioa_value is not None and old_ioa_value != new_ioa_value:
+                    # Remove old IOA
+                    store.setValues(3, old_ioa_value - 1, [0])
+                    
+                    store.setValues(3, new_ioa_value - 1, [item.value])
+                    
+                    tap_changers[item_id].ioa_value = new_ioa_value
+                    tap_changers[item_id].name = data.get('name', item.name)
+                    tap_changers[item_id].value_high_limit = data.get('value_high_limit', item.value_high_limit)
+                    tap_changers[item_id].value_low_limit = data.get('value_low_limit', item.value_low_limit)
+                    tap_changers[item_id].auto_mode = data.get('auto_mode', item.auto_mode)
+                    tap_changers[item_id].is_local_remote = data.get('is_local_remote', item.is_local_remote)
+                    
+                # Update all fields that are provided in the data
+                for key, value in data.items():
+                    if hasattr(tap_changers[item_id], key) and key != 'id':
+                        setattr(tap_changers[item_id], key, value)
+
+                        # Update IEC server for the IOA value
+                        if key == 'value':
+                            store.setValues(3, item.ioa_value - 1, [value])
+                        elif key == 'value_high_limit':
+                            store.setValues(3, item.ioa_high_limit - 1, [value])
+                        elif key == 'value_low_limit':
+                            store.setValues(3, item.ioa_low_limit - 1, [value])
+                        elif key == 'auto_mode':
+                            store.setValues(1, item.ioa_status_auto_manual - 1, [value])
+                        elif key == 'status_raise_lower':
+                            store.setValues(1, item.ioa_status_raise_lower - 1, [value])
+                        elif key == 'status_auto_manual':
+                            store.setValues(1, item.ioa_status_auto_manual - 1, [value])
+                        elif key == 'is_local_remote':
+                            store.setValues(1, item.ioa_local_remote - 1, [value])
+                        
+                logger.info(f"Updated tap changer: {item.name}, data: {tap_changers[item_id].model_dump()}")
+                await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()])
+                return {"status": "success"}
+            
+    return {"status": "error", "message": "Tap changer not found"}
+
+@sio.event
+async def remove_tap_changer(sid, data):
+    item_id = data.get('id')
+    if item_id and item_id in tap_changers:
+        item = tap_changers.pop(item_id)
+
+        store.setValues(3, item.ioa_value - 1, [0])  # Reset holding register for value
+        store.setValues(3, item.ioa_high_limit - 1, [0])  # Reset holding register for high limit
+        store.setValues(3, item.ioa_low_limit - 1, [0])  # Reset holding register for low limit
+        store.setValues(1, item.ioa_status_raise_lower - 1, [0])  # Reset discrete input for raise/lower status
+        store.setValues(1, item.ioa_status_auto_manual - 1, [0])  # Reset discrete input for auto/manual status
+        store.setValues(1, item.ioa_local_remote - 1, [0])  # Reset discrete input for local/remote status
+        store.setValues(1, item.ioa_command_raise_lower - 1, [0])  # Reset coil for raise/lower command
+        store.setValues(1, item.ioa_command_auto_manual - 1, [0])  # Reset coil for auto/manual command
+
+        logger.info(f"Removed tap changer: {item.name}")
+        await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()])
+        return {"status": "success", "message": f"Removed tap changer {item.name}"}
+    
+    return {"status": "error", "message": "Tap changer not found"}
+
 async def poll_ioa_values():
     """
     Continuously poll IOA values from the IEC server and send them to frontend clients.
@@ -373,7 +481,8 @@ async def poll_ioa_values():
     last_update_times = {
         "circuit_breakers": {},
         "telesignals": {},
-        "telemetries": {}
+        "telemetries": {},
+        "tap_changers": {}
     }
     
     while True:
@@ -382,7 +491,8 @@ async def poll_ioa_values():
             has_updates = {
                 "circuit_breakers": False,
                 "telesignals": False,
-                "telemetries": False
+                "telemetries": False,
+                "tap_changers": False
             }
             
             # Simulate telesignals in auto mode
@@ -442,6 +552,25 @@ async def poll_ioa_values():
                 last_update_times["telemetries"][item_id] = current_time
                 has_updates["telemetries"] = True
                 
+            for item_id, item in list(circuit_breakers.items()):
+                 # Check if item should be updated based on interval
+                last_update = last_update_times["tap_changers"].get(item_id, 0)
+                if current_time - last_update >= item.interval and item.auto_mode:
+                    # random value betwwen high and low limit
+                    new_value = random.randint(item.value_low_limit, item.value_high_limit)
+                    
+                    # Update the tap changer value
+                    tap_changers[item_id].value = new_value
+                    
+                    # Update IEC server
+                    store.setValues(3, item.ioa_value - 1, [new_value])
+                    
+                    logger.info(f"Tap changer auto-updated: {item.name} (IOA: {item.ioa_value}) value: {new_value}")
+                    
+                    # Record update time
+                    last_update_times["tap_changers"][item_id] = current_time
+                    has_updates["tap_changers"] = True    
+                
             # Broadcast updates only if there were changes
             if has_updates["circuit_breakers"] and circuit_breakers:
                 await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
@@ -449,6 +578,8 @@ async def poll_ioa_values():
                 await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
             if has_updates["telemetries"] and telemetries:
                 await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
+            if has_updates["tap_changers"] and tap_changers:
+                await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()])
                 
             # Use a shorter sleep time to check more frequently, but not burn CPU
             await asyncio.sleep(0.1)
@@ -530,6 +661,7 @@ async def monitor_modbus_changes():
                 await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()])
                 await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()])
                 await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()])
+                await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()])
 
             await asyncio.sleep(0.001)  # 1 ms
         except Exception as e:
@@ -541,10 +673,22 @@ async def export_data(sid):
     """Export all data as JSON via socket."""
     try:
         logger.info("Exporting all IOA data via socket")
+        
+        # Get circuit breakers with correct field names
+        circuit_breaker_data = []
+        for cb in circuit_breakers.values():
+            cb_dict = cb.model_dump()
+            # Ensure field name consistency with the model
+            if "has_double_point" in cb_dict:
+                cb_dict["has_double_point"] = cb_dict.get("has_double_point")
+            
+            circuit_breaker_data.append(cb_dict)
+        
         data = {
-            "circuit_breakers": [item.model_dump() for item in circuit_breakers.values()],
+            "circuit_breakers": circuit_breaker_data,
             "telesignals": [item.model_dump() for item in telesignals.values()],
             "telemetries": [item.model_dump() for item in telemetries.values()],
+            "tap_changers": [item.model_dump() for item in tap_changers.values()],
         }
         await sio.emit('export_data_response', data, room=sid)
     except Exception as e:
@@ -560,22 +704,31 @@ async def import_data(sid, data):
         circuit_breakers.clear()
         telesignals.clear()
         telemetries.clear()
+        tap_changers.clear()
 
         # Populate with new data
         for cb in data.get("circuit_breakers", []):
+            if "is_double_point" in cb and "has_double_point" not in cb:
+                cb["has_double_point"] = cb.pop["is_double_point"]
+                
             item = CircuitBreakerItem(**cb)
             circuit_breakers[item.id] = item
             
-            # Update Modbus registers with initial states
-            store.setValues(2, item.ioa_cb_status - 1, [False])
-            store.setValues(2, item.ioa_cb_status_close - 1, [False])
-            if item.is_double_point and item.ioa_cb_status_dp:
-                store.setValues(4, item.ioa_cb_status_dp - 1, [0])
-                store.setValues(3, item.ioa_control_dp - 1, [0])
-                
-            store.setValues(1, item.ioa_control_open - 1, [0])
-            store.setValues(1, item.ioa_control_close - 1, [0])
-            store.setValues(1, item.ioa_local_remote - 1, [item.remote])
+            store.setValues(2, item.ioa_cb_status - 1, [False])  # Initially off
+            store.setValues(2, item.ioa_cb_status_close - 1, [False])  # Initially off
+            store.setValues(1, item.ioa_control_open - 1, [0])  # Initially off
+            store.setValues(1, item.ioa_control_close - 1, [0])  # Initially off   
+            
+            if item.has_double_point:
+                if item.ioa_cb_status_dp is not None:
+                    store.setValues(4, item.ioa_cb_status_dp - 1, [0])
+                if item.ioa_control_dp is not None:
+                    store.setValues(3, item.ioa_control_dp - 1, [0])
+                    
+            store.setValues(1, item.ioa_local_remote_sp - 1, [False])  # Reset remote/local mode
+            if item.has_local_remote_dp:
+                store.setValues(1, item.ioa_local_remote_dp - 1, [False])
+            
             logger.info(f"Added circuit breaker: {item.name} with IOA CB status open (for unique value): {item.ioa_cb_status}")    
             
         for ts in data.get("telesignals", []):
@@ -596,9 +749,25 @@ async def import_data(sid, data):
             store.setValues(3, item.ioa - 1, [scaled_value])  # Holding register
             logger.info(f"Added telemetry: {item.name} with IOA {item.ioa}")
             
+        for tc in data.get("tap_changers", []):
+            item = TapChangerItem(**tc)
+            tap_changers[item.id] = item
+            
+            store.setValues(3, item.ioa_value - 1, [item.value])  # Holding register for value
+            store.setValues(3, item.ioa_high_limit - 1, [item.value_high_limit])  # Holding register for high limit
+            store.setValues(3, item.ioa_low_limit - 1, [item.value_low_limit])  # Holding register for low limit
+            store.setValues(1, item.ioa_status_raise_lower - 1, [0])  # Discrete input for raise/lower status
+            store.setValues(1, item.ioa_status_auto_manual - 1, [item.auto_mode])  # Discrete input for auto/manual status
+            store.setValues(1, item.ioa_local_remote - 1, [item.is_local_remote])  # Discrete input for local/remote status
+            store.setValues(1, item.ioa_command_raise_lower - 1, [0])  # Coil for raise/lower command
+            store.setValues(1, item.ioa_command_auto_manual - 1, [item.auto_mode])  # Coil for auto/manual command 
+            
+            logger.info(f"Added tap changer: {item.name} with IOA Value {item.ioa_value}")
+            
         await sio.emit('circuit_breakers', [item.model_dump() for item in circuit_breakers.values()], room=sid)
         await sio.emit('telesignals', [item.model_dump() for item in telesignals.values()], room=sid)
         await sio.emit('telemetries', [item.model_dump() for item in telemetries.values()], room=sid)
+        await sio.emit('tap_changers', [item.model_dump() for item in tap_changers.values()], room=sid)
         await sio.emit('import_data_response', {"status": "success"}, room=sid)
     except Exception as e:
         logger.error(f"Error importing data: {e}")
@@ -635,6 +804,15 @@ async def update_order(sid, data):
             if id in telemetries:
                 ordered_items[id] = telemetries[id]
         telemetries = ordered_items    
+        
+    elif item_type == 'tap_changers':
+        # Reorder tap_changers
+        global tap_changers
+        ordered_items = {}
+        for id in item_ids:
+            if id in tap_changers:
+                ordered_items[id] = tap_changers[id]
+        tap_changers = ordered_items
         
 device = ModbusDeviceIdentification(
         info_name={
@@ -692,7 +870,8 @@ async def root():
         "items": {
             "circuit_breakers": len(circuit_breakers),
             "telesignals": len(telesignals),
-            "telemetries": len(telemetries)
+            "telemetries": len(telemetries),
+            "tap_changers": len(tap_changers)
         }
     }
 

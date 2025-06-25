@@ -8,19 +8,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Toaster } from "./ui/sonner";
 import { toast } from "sonner";
 import { Item } from "@/lib/items";
+import { AddDialog } from "./AddDialog";
+import { EditDialog } from "./EditDialog";
 
 type ManageItemDialogProps = {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  action: "add" | "edit" | "remove";  // Added "edit"
+  action: "add" | "edit" | "remove";
   items?: Item[];
-  itemToEdit?: any;  // Add this prop
+  itemToEdit?: any;
   onSubmit: (data: any) => void;
 };
 
@@ -42,23 +42,101 @@ export function ManageItemDialog({
   // Circuit breaker fields
   const [ioaControlOpen, setIOAControlOpen] = useState("");
   const [ioaControlClose, setIOAControlClose] = useState("");
-  const [ioaLocalRemote, setIOALocalRemote] = useState("");
+  const [ioaLocalRemoteSP, setIOALocalRemoteSP] = useState("");
+  const [ioaLocalRemoteDP, setIOALocalRemoteDP] = useState("");
+  const [isLocalRemoteDP, setIsLocalRemoteDP] = useState("false");
   const [isDoublePoint, setIsDoublePoint] = useState("false");
   const [addressDP, setAddressDP] = useState("");
   const [ioaCbStatusClose, setIoaCbStatusClose] = useState("");
   const [controlDP, setControlDP] = useState("");
 
   // Telesignal fields
-  const [valTelesignal, setValTelesignal] = useState("");
+  const [valTelesignal, setValTelesignal] = useState("0");
 
   // Telemetry fields
   const [unit, setUnit] = useState("");
   const [valTelemetry, setValTelemetry] = useState("");
-  const [scaleFactor, setScaleFactor] = useState("");
+  const [scaleFactor, setScaleFactor] = useState("1");
   const [minValue, setMinValue] = useState("");
   const [maxValue, setMaxValue] = useState("");
 
+  // Tap Changer fields
+  const [value, setValue] = useState("");
+  const [valueHighLimit, setValueHighLimit] = useState("");
+  const [valueLowLimit, setValueLowLimit] = useState("");
+  const [ioaStatusRaiseLower, setIOAStatusRaiseLower] = useState("");
+  const [ioaCommandRaiseLower, setIOACommandRaiseLower] = useState("");
+  const [ioaStatusAutoManual, setIOAStatusAutoManual] = useState("");
+  const [ioaCommandAutoManual, setIOACommandAutoManual] = useState("");
+  const [ioaLocalRemote, setIOALocalRemote] = useState("");
+  const [ioaHighLimit, setIOAHighLimit] = useState("");
+  const [ioaLowLimit, setIOALowLimit] = useState("");
+
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Create a bundle of props to pass to child dialogs
+  const dialogProps = {
+    errors,
+    itemType,
+    setItemType,
+    name,
+    setName,
+    address,
+    setAddress,
+    interval,
+    setInterval,
+    ioaCbStatusClose,
+    setIoaCbStatusClose,
+    ioaControlOpen,
+    setIOAControlOpen,
+    ioaControlClose,
+    setIOAControlClose,
+    isDoublePoint,
+    setIsDoublePoint,
+    addressDP,
+    setAddressDP,
+    controlDP,
+    setControlDP,
+    ioaLocalRemoteSP,
+    setIOALocalRemoteSP,
+    isLocalRemoteDP,
+    setIsLocalRemoteDP,
+    ioaLocalRemoteDP,
+    setIOALocalRemoteDP,
+    valTelesignal,
+    setValTelesignal,
+    unit,
+    setUnit,
+    valTelemetry,
+    setValTelemetry,
+    minValue,
+    setMinValue,
+    maxValue,
+    setMaxValue,
+    scaleFactor,
+    setScaleFactor,
+    value,
+    setValue,
+    valueHighLimit,
+    setValueHighLimit,
+    valueLowLimit,
+    setValueLowLimit,
+    ioaHighLimit,
+    setIOAHighLimit,
+    ioaLowLimit,
+    setIOALowLimit,
+    ioaStatusRaiseLower,
+    setIOAStatusRaiseLower,
+    ioaCommandRaiseLower,
+    setIOACommandRaiseLower,
+    ioaStatusAutoManual,
+    setIOAStatusAutoManual,
+    ioaCommandAutoManual,
+    setIOACommandAutoManual,
+    ioaLocalRemote,
+    setIOALocalRemote,
+  };
+
 
   useEffect(() => {
     if (isOpen && action === "edit" && itemToEdit) {
@@ -71,8 +149,11 @@ export function ManageItemDialog({
         setAddress(itemToEdit.ioa_cb_status?.toString() || "");
         setIOAControlOpen(itemToEdit.ioa_control_open?.toString() || "");
         setIOAControlClose(itemToEdit.ioa_control_close?.toString() || "");
-        setIOALocalRemote(itemToEdit.ioa_local_remote?.toString() || "");
-        setIsDoublePoint(itemToEdit.is_double_point ? "true" : "false");
+        setIOALocalRemoteSP(itemToEdit.ioa_local_remote_sp?.toString() || "");
+        setIOALocalRemoteDP(itemToEdit.ioa_local_remote_dp?.toString() || "");
+        // Use the actual values from the circuit breaker
+        setIsLocalRemoteDP(itemToEdit.has_local_remote_dp ? "true" : "false");
+        setIsDoublePoint(itemToEdit.has_double_point ? "true" : "false");
         setAddressDP(itemToEdit.ioa_cb_status_dp?.toString() || "");
         setIoaCbStatusClose(itemToEdit.ioa_cb_status_close?.toString() || "");
         setControlDP(itemToEdit.ioa_control_dp?.toString() || "");
@@ -92,6 +173,21 @@ export function ManageItemDialog({
         setScaleFactor(itemToEdit.scale_factor?.toString() || "1");
         setMinValue(itemToEdit.min_value?.toString() || "0");
         setMaxValue(itemToEdit.max_value?.toString() || "100");
+      } else if ('ioa_value' in itemToEdit) {
+        // Tap Changer
+        setItemType("Tap Changer");
+        setAddress(itemToEdit.ioa_value?.toString() || "");
+        setInterval(itemToEdit.interval?.toString() || "");
+        setValue(itemToEdit.value?.toString() || "");
+        setIOAHighLimit(itemToEdit.ioa_high_limit?.toString() || "");
+        setIOALowLimit(itemToEdit.ioa_low_limit?.toString() || "");
+        setValueHighLimit(itemToEdit.value_high_limit?.toString() || "");
+        setValueLowLimit(itemToEdit.value_low_limit?.toString() || "");
+        setIOAStatusRaiseLower(itemToEdit.ioa_status_raise_lower?.toString() || "");
+        setIOACommandRaiseLower(itemToEdit.ioa_command_raise_lower?.toString() || "");
+        setIOAStatusAutoManual(itemToEdit.ioa_status_auto_manual?.toString() || "");
+        setIOACommandAutoManual(itemToEdit.ioa_command_auto_manual?.toString() || "");
+        setIOALocalRemote(itemToEdit.ioa_local_remote?.toString() || "");
       }
     } else if (isOpen && action !== "edit") {
       // Reset form when opening for add/remove
@@ -107,18 +203,30 @@ export function ManageItemDialog({
     setItemType("");
     setIOAControlOpen("");
     setIOAControlClose("");
-    setIOALocalRemote("");
-    setIsDoublePoint("false");
+    setIOALocalRemoteSP("");
     setAddressDP("");
     setIoaCbStatusClose("");
     setControlDP("");
-    setValTelesignal("");
+    setValTelesignal("0");
     setUnit("");
     setValTelemetry("");
     setScaleFactor("1");
     setMinValue("");
     setMaxValue("");
     setErrors({});
+    setIsDoublePoint("false");
+    setIsLocalRemoteDP("false");
+    setIOALocalRemoteDP("");
+    setValue("");
+    setValueHighLimit("");
+    setValueLowLimit("");
+    setIOAHighLimit("");
+    setIOALowLimit("");
+    setIOAStatusRaiseLower("");
+    setIOACommandRaiseLower("");
+    setIOAStatusAutoManual("");
+    setIOACommandAutoManual("");
+    setIOALocalRemote("");
   };
 
   const validateForm = () => {
@@ -132,7 +240,10 @@ export function ManageItemDialog({
       items.some(item => item.name.toLowerCase() === name.toLowerCase())
     ) {
       newErrors.name = "Name already exists";
+    } else if (action === "edit" && itemToEdit && items.some(item => item.id !== itemToEdit.id && item.name.toLowerCase() === name.toLowerCase())) {
+      newErrors.name = "Name already exists";
     }
+
 
     if (!address) {
       newErrors.address = "Address/IOA is required";
@@ -180,7 +291,7 @@ export function ManageItemDialog({
         newErrors.ioaControlOpen = "IOA Control Open must be a number";
       } else if (
         action === "add" &&
-        items.some((item: any) => item.ioa_control_open === Number(ioaControlOpen))
+        items.some((item: any) => 'ioa_control_open' in item && item.ioa_control_open === Number(ioaControlOpen))
       ) {
         newErrors.ioaControlOpen = "IOA Control Open already in use";
       }
@@ -191,20 +302,33 @@ export function ManageItemDialog({
         newErrors.ioaControlClose = "IOA Control Close must be a number";
       } else if (
         action === "add" &&
-        items.some((item: any) => item.ioa_control_close === Number(ioaControlClose))
+        items.some((item: any) => 'ioa_control_close' in item && item.ioa_control_close === Number(ioaControlClose))
       ) {
         newErrors.ioaControlClose = "IOA Control Close already in use";
       }
 
-      if (!ioaLocalRemote) {
-        newErrors.ioaLocalRemote = "IOA Local Remote is required";
-      } else if (isNaN(Number(ioaLocalRemote))) {
-        newErrors.ioaLocalRemote = "IOA Local Remote must be a number";
+      if (!ioaLocalRemoteSP) {
+        newErrors.ioaLocalRemoteSP = "IOA Local Remote SP is required";
+      } else if (isNaN(Number(ioaLocalRemoteSP))) {
+        newErrors.ioaLocalRemoteSP = "IOA Local Remote SP must be a number";
       } else if (
         action === "add" &&
-        items.some((item: any) => item.ioa_local_remote === Number(ioaLocalRemote))
+        items.some((item: any) => 'ioa_local_remote_sp' in item && item.ioa_local_remote_sp === Number(ioaLocalRemoteSP))
       ) {
-        newErrors.ioaLocalRemote = "IOA Local Remote already in use";
+        newErrors.ioaLocalRemoteSP = "IOA Local Remote already in use";
+      }
+
+      if (isLocalRemoteDP === "true") {
+        if (!ioaLocalRemoteDP) {
+          newErrors.ioaLocalRemoteDP = "IOA Local Remote DP is required";
+        } else if (isNaN(Number(ioaLocalRemoteDP))) {
+          newErrors.ioaLocalRemoteDP = "IOA Local Remote DP must be a number";
+        } else if (
+          action === "add" &&
+          items.some((item: any) => 'ioa_local_remote_dp' in item && item.ioa_local_remote_dp === Number(ioaLocalRemoteDP))
+        ) {
+          newErrors.ioaLocalRemoteDP = "IOA Local Remote DP already in use";
+        }
       }
 
       if (!ioaCbStatusClose) {
@@ -220,7 +344,7 @@ export function ManageItemDialog({
           newErrors.addressDP = "Double point address/IOA must be a number";
         } else if (
           action === "add" &&
-          items.some((item: any) => item.ioa_data_dp === Number(addressDP))
+          items.some((item: any) => 'ioa_cb_status_dp' in item && item.ioa_cb_status_dp === Number(addressDP))
         ) {
           newErrors.addressDP = "Double point address/IOA already in use";
         }
@@ -239,7 +363,7 @@ export function ManageItemDialog({
         newErrors.unit = "Unit is required";
       }
 
-      if (!valTelemetry || isNaN(Number(valTelemetry))) {
+      if (valTelemetry === "" || isNaN(Number(valTelemetry))) {
         newErrors.valTelemetry = "Valid value is required";
       }
 
@@ -247,11 +371,11 @@ export function ManageItemDialog({
         newErrors.scaleFactor = "Valid scale factor is required (must be greater than 0)";
       }
 
-      if (!minValue || isNaN(Number(minValue))) {
+      if (minValue === "" || isNaN(Number(minValue))) {
         newErrors.minValue = "Valid minimum value is required";
       }
 
-      if (!maxValue || isNaN(Number(maxValue))) {
+      if (maxValue === "" || isNaN(Number(maxValue))) {
         newErrors.maxValue = "Valid maximum value is required";
       }
 
@@ -260,15 +384,91 @@ export function ManageItemDialog({
       }
     }
 
+    if (itemType === "Tap Changer") {
+      if (!address) {
+        newErrors.address = "Address is required";
+      } else if (isNaN(Number(address))) {
+        newErrors.address = "Address must be a number";
+      }
+
+      if (value === "" || isNaN(Number(value))) {
+        newErrors.value = "Valid value is required";
+      }
+
+      if (!valueHighLimit) {
+        newErrors.valueHighLimit = "Value High Limit is required";
+      } else if (isNaN(Number(valueHighLimit))) {
+        newErrors.valueHighLimit = "Value High Limit must be a number";
+      }
+
+      if (!valueLowLimit) {
+        newErrors.valueLowLimit = "Value Low Limit is required";
+      } else if (isNaN(Number(valueLowLimit))) {
+        newErrors.valueLowLimit = "Value Low Limit must be a number";
+      }
+
+      if (Number(valueLowLimit) >= Number(valueHighLimit)) {
+        newErrors.range = "Value High Limit must be greater than Value Low Limit";
+      }
+
+      if (!ioaHighLimit) {
+        newErrors.ioaHighLimit = "IOA High Limit is required";
+      } else if (isNaN(Number(ioaHighLimit))) {
+        newErrors.ioaHighLimit = "IOA High Limit must be a number";
+      }
+
+      if (!ioaLowLimit) {
+        newErrors.ioaLowLimit = "IOA Low Limit is required";
+      } else if (isNaN(Number(ioaLowLimit))) {
+        newErrors.ioaLowLimit = "IOA Low Limit must be a number";
+      }
+
+      if (!ioaStatusRaiseLower) {
+        newErrors.ioaStatusRaiseLower = "IOA Status Raise/Lower is required";
+      } else if (isNaN(Number(ioaStatusRaiseLower))) {
+        newErrors.ioaStatusRaiseLower = "IOA Status Raise/Lower must be a number";
+      }
+
+      if (!ioaStatusRaiseLower) {
+        newErrors.ioaStatusRaiseLower = "IOA Status Raise/Lower is required";
+      } else if (isNaN(Number(ioaStatusRaiseLower))) {
+        newErrors.ioaStatusRaiseLower = "IOA Status Raise/Lower must be a number";
+      }
+
+      if (!ioaCommandRaiseLower) {
+        newErrors.ioaCommandRaiseLower = "IOA Command Raise/Lower is required";
+      } else if (isNaN(Number(ioaCommandRaiseLower))) {
+        newErrors.ioaCommandRaiseLower = "IOA Command Raise/Lower must be a number";
+      }
+
+      if (!ioaStatusAutoManual) {
+        newErrors.ioaStatusAutoManual = "IOA Status Auto/Manual is required";
+      } else if (isNaN(Number(ioaStatusAutoManual))) {
+        newErrors.ioaStatusAutoManual = "IOA Status Auto/Manual must be a number";
+      }
+
+      if (!ioaCommandAutoManual) {
+        newErrors.ioaCommandAutoManual = "IOA Command Auto/Manual is required";
+      } else if (isNaN(Number(ioaCommandAutoManual))) {
+        newErrors.ioaCommandAutoManual = "IOA Command Auto/Manual must be a number";
+      }
+
+      if (!ioaLocalRemote) {
+        newErrors.ioaLocalRemote = "IOA Local/Remote is required";
+      } else if (isNaN(Number(ioaLocalRemote))) {
+        newErrors.ioaLocalRemote = "IOA Local/Remote must be a number";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
-      // Display general error toast
       toast.error("Please fix the errors in the form");
       return;
     }
@@ -276,33 +476,32 @@ export function ManageItemDialog({
     const commonData = action === "edit" && itemToEdit ? { id: itemToEdit.id } : {};
 
     if (action === "add" || action === "edit") {
+      let submissionData: any;
       if (itemType === "Circuit Breaker") {
         const isDP = isDoublePoint === "true";
-        onSubmit({
-          ...commonData,
+        const isLRDP = isLocalRemoteDP === "true";
+        submissionData = {
           name,
           ioa_cb_status: parseInt(address),
           ioa_cb_status_close: parseInt(ioaCbStatusClose),
           ioa_control_open: parseInt(ioaControlOpen),
           ioa_control_close: parseInt(ioaControlClose),
-          ioa_local_remote: parseInt(ioaLocalRemote),
-          is_double_point: isDP,
+          ioa_local_remote_sp: parseInt(ioaLocalRemoteSP),
+          has_local_remote_dp: isLRDP,
+          ioa_local_remote_dp: isLRDP ? parseInt(ioaLocalRemoteDP) : undefined,
+          has_double_point: isDP,
           ioa_cb_status_dp: isDP ? parseInt(addressDP) : undefined,
           ioa_control_dp: isDP ? parseInt(controlDP) : undefined,
-          remote: 0,  // Default to local mode
-          interval: parseInt(interval),
-        });
+        };
       } else if (itemType === "Telesignal") {
-        onSubmit({
-          ...commonData,
+        submissionData = {
           name,
           ioa: parseInt(address),
           interval: parseInt(interval),
           value: parseInt(valTelesignal),
-        });
+        };
       } else if (itemType === "Telemetry") {
-        onSubmit({
-          ...commonData,
+        submissionData = {
           name,
           ioa: parseInt(address),
           unit,
@@ -311,8 +510,26 @@ export function ManageItemDialog({
           min_value: parseFloat(minValue),
           max_value: parseFloat(maxValue),
           interval: parseInt(interval)
-        });
+        };
+      } else if (itemType === "Tap Changer") {
+        submissionData = {
+          name,
+          ioa_value: parseInt(address),
+          value: parseInt(value),
+          value_high_limit: parseInt(valueHighLimit),
+          value_low_limit: parseInt(valueLowLimit),
+          ioa_high_limit: parseInt(ioaHighLimit),
+          ioa_low_limit: parseInt(ioaLowLimit),
+          ioa_status_raise_lower: parseInt(ioaStatusRaiseLower),
+          ioa_command_raise_lower: parseInt(ioaCommandRaiseLower),
+          ioa_status_auto_manual: parseInt(ioaStatusAutoManual),
+          ioa_command_auto_manual: parseInt(ioaCommandAutoManual),
+          ioa_local_remote: parseInt(ioaLocalRemote),
+          interval: parseInt(interval),
+          ...commonData
+        };
       }
+      onSubmit({ ...commonData, ...submissionData });
     } else {
       onSubmit({ id: selectedItem });
       setSelectedItem("");
@@ -320,6 +537,7 @@ export function ManageItemDialog({
 
     onClose();
   };
+
 
   const getDialogTitle = () => {
     switch (action) {
@@ -343,569 +561,10 @@ export function ManageItemDialog({
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {action === "add" ? (
-              <>
-                <div className="flex w-full items-center gap-1.5">
-                  <Label htmlFor="item-type" className="w-1/3">Item Type</Label>
-                  <select
-                    id="item-type"
-                    className={`border rounded p-2 w-2/3 ${errors.itemType ? "border-red-500" : ""}`}
-                    value={itemType}
-                    onChange={(e) => setItemType(e.target.value)}
-                  >
-                    <option value="">Choose</option>
-                    <option value="Circuit Breaker">Circuit Breaker</option>
-                    <option value="Telesignal">Telesignal</option>
-                    <option value="Telemetry">Telemetry</option>
-                  </select>
-                  {errors.itemType && <p className="text-red-500 text-xs">{errors.itemType}</p>}
-                </div>
-
-                {itemType && (
-                  <div className="flex w-full items-center gap-1.5">
-                    <Label htmlFor="name" className="w-1/3">Name</Label>
-                    <input
-                      type="text"
-                      id="name"
-                      className={`border rounded p-2 w-2/3 ${errors.name ? "border-red-500" : ""}`}
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                    />
-                    {errors.name && <p className="text-red-500 text-xs">{errors.name}</p>}
-                  </div>
-                )}
-
-                {itemType && (
-                  <div className="flex w-full items-center gap-1.5">
-                    <Label htmlFor="address" className="w-1/3">{itemType == "Circuit Breaker" ? "IOA CB Status Open" : "IOA"}</Label>
-                    <input
-                      type="number"
-                      id="address"
-                      className={`border rounded p-2 w-2/3 ${errors.address ? "border-red-500" : ""}`}
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                    />
-                    {errors.address && <p className="text-red-500 text-xs">{errors.address}</p>}
-                  </div>
-                )}
-
-                {/* if item type not selected or cb then hide */}
-                {itemType && itemType !== "Circuit Breaker" && (
-                  <div className="flex w-full items-center gap-1.5">
-                    <Label htmlFor="interval" className="w-1/3">Interval</Label>
-                    <input
-                      type="number"
-                      id="interval"
-                      className={`border rounded p-2 w-2/3 ${errors.interval ? "border-red-500" : ""}`}
-                      value={interval}
-                      onChange={(e) => setInterval(e.target.value)}
-                    />
-                    {errors.interval && <p className="text-red-500 text-xs">{errors.interval}</p>}
-                  </div>
-                )}
-
-                {itemType === "Circuit Breaker" && (
-                  <>
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="ioaCbStatusClose" className="w-1/3">
-                        IOA CB Status Close
-                      </Label>
-                      <input
-                        type="number"
-                        id="ioaCbStatusClose"
-                        className={`border rounded p-2 w-2/3 ${errors.ioaCbStatusClose ? "border-red-500" : ""}`}
-                        value={ioaCbStatusClose}
-                        onChange={(e) => setIoaCbStatusClose(e.target.value)}
-                      />
-                      {errors.ioaCbStatusClose && <p className="text-red-500 text-xs">{errors.ioaCbStatusClose}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="ioaControlOpen" className="w-1/3">
-                        IOA Control Open
-                      </Label>
-                      <input
-                        type="number"
-                        id="ioaControlOpen"
-                        className={`border rounded p-2 w-2/3 ${errors.ioaControlOpen ? "border-red-500" : ""}`}
-                        value={ioaControlOpen}
-                        onChange={(e) => setIOAControlOpen(e.target.value)}
-                      />
-                      {errors.ioaControlOpen && <p className="text-red-500 text-xs">{errors.ioaControlOpen}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="ioaControlClose" className="w-1/3">
-                        IOA Control Close
-                      </Label>
-                      <input
-                        type="number"
-                        id="ioaControlClose"
-                        className={`border rounded p-2 w-2/3 ${errors.ioaControlClose ? "border-red-500" : ""}`}
-                        value={ioaControlClose}
-                        onChange={(e) => setIOAControlClose(e.target.value)}
-                      />
-                      {errors.ioaControlClose && <p className="text-red-500 text-xs">{errors.ioaControlClose}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label className="w-1/3">Double Point</Label>
-                      <RadioGroup
-                        value={isDoublePoint}
-                        onValueChange={setIsDoublePoint}
-                        defaultValue="true"
-                      >
-                        <div className="flex flex-row gap-6">
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="true" id="dp-yes" />
-                            <Label htmlFor="dp-yes">Yes</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="false" id="dp-no" />
-                            <Label htmlFor="dp-no">No</Label>
-                          </div>
-                        </div>
-                      </RadioGroup>
-                    </div>
-                    {isDoublePoint === "true" && (
-                      <>
-                        <div className="flex w-full items-center gap-1.5">
-                          <Label htmlFor="address-dp" className="w-1/3">IOA CB Status Double Point</Label>
-                          <input
-                            type="number"
-                            id="address-dp"
-                            className={`border rounded p-2 w-2/3 ${errors.addressDP ? "border-red-500" : ""}`}
-                            value={addressDP}
-                            onChange={(e) => setAddressDP(e.target.value)}
-                          />
-                          {errors.addressDP && <p className="text-red-500 text-xs">{errors.addressDP}</p>}
-                        </div>
-                        <div className="flex w-full items-center gap-1.5">
-                          <Label htmlFor="control-dp" className="w-1/3">IOA Control Double Point</Label>
-                          <input
-                            type="number"
-                            id="control-dp"
-                            className={`border rounded p-2 w-2/3 ${errors.controlDP ? "border-red-500" : ""}`}
-                            value={controlDP}
-                            onChange={(e) => setControlDP(e.target.value)}
-                          />
-                          {errors.controlDP && <p className="text-red-500 text-xs">{errors.controlDP}</p>}
-                        </div>
-                      </>
-                    )}
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="ioaLocalRemote" className="w-1/3">
-                        IOA Local/Remote
-                      </Label>
-                      <input
-                        type="number"
-                        id="ioaLocalRemote"
-                        className={`border rounded p-2 w-2/3 ${errors.ioaLocalRemote ? "border-red-500" : ""}`}
-                        value={ioaLocalRemote}
-                        onChange={(e) => setIOALocalRemote(e.target.value)}
-                      />
-                      {errors.ioaLocalRemote && <p className="text-red-500 text-xs">{errors.ioaLocalRemote}</p>}
-                    </div>
-                  </>
-                )}
-
-                {itemType === "Telesignal" && (
-                  <div className="flex w-full items-center gap-1.5">
-                    <Label htmlFor="value-telesignal" className="w-1/3">Value</Label>
-                    <RadioGroup
-                      id="value-telesignal"
-                      value={valTelesignal}
-                      onValueChange={setValTelesignal}
-                      defaultValue="0"
-                    >
-                      <div className="flex flex-row gap-6">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="1" id="telesignal-on" />
-                          <Label htmlFor="telesignal-on">ON</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="0" id="telesignal-off" />
-                          <Label htmlFor="telesignal-off">OFF</Label>
-                        </div>
-                      </div>
-                    </RadioGroup>
-                    {errors.valTelesignal && <p className="text-red-500 text-xs">{errors.valTelesignal}</p>}
-                  </div>
-                )}
-
-                {itemType === "Telemetry" && (
-                  <>
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="unit" className="w-1/3">Unit</Label>
-                      <input
-                        type="text"
-                        id="unit"
-                        className={`border rounded p-2 w-2/3 ${errors.unit ? "border-red-500" : ""}`}
-                        value={unit}
-                        onChange={(e) => setUnit(e.target.value)}
-                      />
-                      {errors.unit && <p className="text-red-500 text-xs">{errors.unit}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="value_telemetry" className="w-1/3">Value</Label>
-                      <input
-                        type="number"
-                        id="value_telemetry"
-                        className={`border rounded p-2 w-2/3 ${errors.unit ? "border-red-500" : ""}`}
-                        value={valTelemetry}
-                        onChange={(e) => setValTelemetry(e.target.value)}
-                      />
-                      {errors.valTelemetry && <p className="text-red-500 text-xs">{errors.valTelemetry}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="min-value" className="w-1/3">Min Value</Label>
-                      <input
-                        type="number"
-                        id="min-value"
-                        className={`border rounded p-2 w-2/3 ${errors.minValue ? "border-red-500" : ""}`}
-                        value={minValue}
-                        onChange={(e) => setMinValue(e.target.value)}
-                        step="any"
-                      />
-                      {errors.minValue && <p className="text-red-500 text-xs">{errors.minValue}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="max-value" className="w-1/3">Max Value</Label>
-                      <input
-                        type="number"
-                        id="max-value"
-                        className={`border rounded p-2 w-2/3 ${errors.maxValue ? "border-red-500" : ""}`}
-                        value={maxValue}
-                        onChange={(e) => setMaxValue(e.target.value)}
-                        step="any"
-                      />
-                      {errors.maxValue && <p className="text-red-500 text-xs">{errors.maxValue}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="scale-factor" className="w-1/3">Scale Factor</Label>
-                      <select
-                        id="scale-factor"
-                        className={`border rounded p-2 w-2/3 ${errors.scaleFactor ? "border-red-500" : ""}`}
-                        value={scaleFactor}
-                        onChange={(e) => setScaleFactor(e.target.value)}
-                      >
-                        <option value="1">1</option>
-                        <option value="0.1">0.1</option>
-                        <option value="0.01">0.01</option>
-                        <option value="0.001">0.001</option>
-                      </select>
-                      {errors.scaleFactor && <p className="text-red-500 text-xs">{errors.scaleFactor}</p>}
-                    </div>
-
-                    {errors.range && <p className="text-red-500 text-xs">{errors.range}</p>}
-                  </>
-                )}
-              </>
+              <AddDialog {...dialogProps} />
             ) : action === "edit" ? (
-              <>
-                <div className="flex w-full items-center gap-1.5">
-                  <Label htmlFor="name" className="w-1/3">Name</Label>
-                  <input
-                    type="text"
-                    id="name"
-                    className={`border rounded p-2 w-2/3 ${errors.name ? "border-red-500" : ""}`}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                  {errors.name && <p className="text-red-500 text-xs">{errors.name}</p>}
-                </div>
-
-                {/* Same fields that appear in add form for the specific item type */}
-                {itemType === "Circuit Breaker" && (
-                  <>
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="address" className="w-1/3">IOA CB Status Open</Label>
-                      <input
-                        type="number"
-                        id="address"
-                        className={`border rounded p-2 w-2/3 ${errors.address ? "border-red-500" : ""}`}
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                      />
-                      {errors.address && <p className="text-red-500 text-xs">{errors.address}</p>}
-                    </div>
-
-                    {/* Circuit Breaker form fields... */}
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="ioaCbStatusClose" className="w-1/3">
-                        IOA CB Status Close
-                      </Label>
-                      <input
-                        type="number"
-                        id="ioaCbStatusClose"
-                        className={`border rounded p-2 w-2/3 ${errors.ioaCbStatusClose ? "border-red-500" : ""}`}
-                        value={ioaCbStatusClose}
-                        onChange={(e) => setIoaCbStatusClose(e.target.value)}
-                      />
-                      {errors.ioaCbStatusClose && <p className="text-red-500 text-xs">{errors.ioaCbStatusClose}</p>}
-                    </div>
-
-                    {/* Other Circuit Breaker fields... */}
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="ioaControlOpen" className="w-1/3">
-                        IOA Control Open
-                      </Label>
-                      <input
-                        type="number"
-                        id="ioaControlOpen"
-                        className={`border rounded p-2 w-2/3 ${errors.ioaControlOpen ? "border-red-500" : ""}`}
-                        value={ioaControlOpen}
-                        onChange={(e) => setIOAControlOpen(e.target.value)}
-                      />
-                      {errors.ioaControlOpen && <p className="text-red-500 text-xs">{errors.ioaControlOpen}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="ioaControlClose" className="w-1/3">
-                        IOA Control Close
-                      </Label>
-                      <input
-                        type="number"
-                        id="ioaControlClose"
-                        className={`border rounded p-2 w-2/3 ${errors.ioaControlClose ? "border-red-500" : ""}`}
-                        value={ioaControlClose}
-                        onChange={(e) => setIOAControlClose(e.target.value)}
-                      />
-                      {errors.ioaControlClose && <p className="text-red-500 text-xs">{errors.ioaControlClose}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="ioaLocalRemote" className="w-1/3">
-                        IOA Local/Remote
-                      </Label>
-                      <input
-                        type="number"
-                        id="ioaLocalRemote"
-                        className={`border rounded p-2 w-2/3 ${errors.ioaLocalRemote ? "border-red-500" : ""}`}
-                        value={ioaLocalRemote}
-                        onChange={(e) => setIOALocalRemote(e.target.value)}
-                      />
-                      {errors.ioaLocalRemote && <p className="text-red-500 text-xs">{errors.ioaLocalRemote}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label className="w-1/3">Double Point</Label>
-                      <RadioGroup
-                        value={isDoublePoint}
-                        onValueChange={setIsDoublePoint}
-                        defaultValue="false"
-                      >
-                        <div className="flex flex-row gap-6">
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="true" id="dp-yes" />
-                            <Label htmlFor="dp-yes">Yes</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="false" id="dp-no" />
-                            <Label htmlFor="dp-no">No</Label>
-                          </div>
-                        </div>
-                      </RadioGroup>
-                    </div>
-
-                    {isDoublePoint === "true" && (
-                      <>
-                        <div className="flex w-full items-center gap-1.5">
-                          <Label htmlFor="address-dp" className="w-1/3">IOA CB Status Double Point</Label>
-                          <input
-                            type="number"
-                            id="address-dp"
-                            className={`border rounded p-2 w-2/3 ${errors.addressDP ? "border-red-500" : ""}`}
-                            value={addressDP}
-                            onChange={(e) => setAddressDP(e.target.value)}
-                          />
-                          {errors.addressDP && <p className="text-red-500 text-xs">{errors.addressDP}</p>}
-                        </div>
-                        <div className="flex w-full items-center gap-1.5">
-                          <Label htmlFor="control-dp" className="w-1/3">IOA Control Double Point</Label>
-                          <input
-                            type="number"
-                            id="control-dp"
-                            className={`border rounded p-2 w-2/3 ${errors.controlDP ? "border-red-500" : ""}`}
-                            value={controlDP}
-                            onChange={(e) => setControlDP(e.target.value)}
-                          />
-                          {errors.controlDP && <p className="text-red-500 text-xs">{errors.controlDP}</p>}
-                        </div>
-                      </>
-                    )}
-                  </>
-                )}
-
-                {itemType === "Telesignal" && (
-                  <>
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="address" className="w-1/3">IOA</Label>
-                      <input
-                        type="number"
-                        id="address"
-                        className={`border rounded p-2 w-2/3 ${errors.address ? "border-red-500" : ""}`}
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                      />
-                      {errors.address && <p className="text-red-500 text-xs">{errors.address}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="interval" className="w-1/3">Interval</Label>
-                      <input
-                        type="number"
-                        id="interval"
-                        className={`border rounded p-2 w-2/3 ${errors.interval ? "border-red-500" : ""}`}
-                        value={interval}
-                        onChange={(e) => setInterval(e.target.value)}
-                      />
-                      {errors.interval && <p className="text-red-500 text-xs">{errors.interval}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="value_telesignal" className="w-1/3">Value</Label>
-                      <RadioGroup
-                        id="value_telesignal"
-                        value={valTelesignal}
-                        onValueChange={setValTelesignal}
-                        defaultValue="0"
-                      >
-                        <div className="flex flex-row gap-6">
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="1" id="edit-telesignal-on" />
-                            <Label htmlFor="edit-telesignal-on">ON</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="0" id="edit-telesignal-off" />
-                            <Label htmlFor="edit-telesignal-off">OFF</Label>
-                          </div>
-                        </div>
-                      </RadioGroup>
-                      {errors.valTelesignal && <p className="text-red-500 text-xs">{errors.valTelesignal}</p>}
-                    </div>
-                  </>
-                )}
-
-                {itemType === "Telemetry" && (
-                  <>
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="address" className="w-1/3">IOA</Label>
-                      <input
-                        type="number"
-                        id="address"
-                        className={`border rounded p-2 w-2/3 ${errors.address ? "border-red-500" : ""}`}
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                      />
-                      {errors.address && <p className="text-red-500 text-xs">{errors.address}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="interval" className="w-1/3">Interval</Label>
-                      <input
-                        type="number"
-                        id="interval"
-                        className={`border rounded p-2 w-2/3 ${errors.interval ? "border-red-500" : ""}`}
-                        value={interval}
-                        onChange={(e) => setInterval(e.target.value)}
-                      />
-                      {errors.interval && <p className="text-red-500 text-xs">{errors.interval}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="unit" className="w-1/3">Unit</Label>
-                      <input
-                        type="text"
-                        id="unit"
-                        className={`border rounded p-2 w-2/3 ${errors.unit ? "border-red-500" : ""}`}
-                        value={unit}
-                        onChange={(e) => setUnit(e.target.value)}
-                      />
-                      {errors.unit && <p className="text-red-500 text-xs">{errors.unit}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="value_telemetry" className="w-1/3">Value</Label>
-                      <input
-                        type="number"
-                        id="value_telemetry"
-                        className={`border rounded p-2 w-2/3 ${errors.valTelemetry ? "border-red-500" : ""}`}
-                        value={valTelemetry}
-                        onChange={(e) => setValTelemetry(e.target.value)}
-                        step="any"
-                      />
-                      {errors.valTelemetry && <p className="text-red-500 text-xs">{errors.valTelemetry}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="min-value" className="w-1/3">Min Value</Label>
-                      <input
-                        type="number"
-                        id="min-value"
-                        className={`border rounded p-2 w-2/3 ${errors.minValue ? "border-red-500" : ""}`}
-                        value={minValue}
-                        onChange={(e) => setMinValue(e.target.value)}
-                        step="any"
-                      />
-                      {errors.minValue && <p className="text-red-500 text-xs">{errors.minValue}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="max-value" className="w-1/3">Max Value</Label>
-                      <input
-                        type="number"
-                        id="max-value"
-                        className={`border rounded p-2 w-2/3 ${errors.maxValue ? "border-red-500" : ""}`}
-                        value={maxValue}
-                        onChange={(e) => setMaxValue(e.target.value)}
-                        step="any"
-                      />
-                      {errors.maxValue && <p className="text-red-500 text-xs">{errors.maxValue}</p>}
-                    </div>
-
-                    <div className="flex w-full items-center gap-1.5">
-                      <Label htmlFor="scale-factor" className="w-1/3">Scale Factor</Label>
-                      <select
-                        id="scale-factor"
-                        className={`border rounded p-2 w-2/3 ${errors.scaleFactor ? "border-red-500" : ""}`}
-                        value={scaleFactor}
-                        onChange={(e) => setScaleFactor(e.target.value)}
-                      >
-                        <option value="1">1</option>
-                        <option value="0.1">0.1</option>
-                        <option value="0.01">0.01</option>
-                        <option value="0.001">0.001</option>
-                      </select>
-                      {errors.scaleFactor && <p className="text-red-500 text-xs">{errors.scaleFactor}</p>}
-                    </div>
-
-                    {errors.range && <p className="text-red-500 text-xs">{errors.range}</p>}
-                  </>
-                )}
-              </>
-            ) : (
-              <div className="flex w-full items-center gap-1.5">
-                <Label htmlFor="item" className="w-1/3">Select {itemType} to remove</Label>
-                <select
-                  id="item"
-                  className={`border rounded p-2 w-full ${errors.selectedItem ? "border-red-500" : ""}`}
-                  value={selectedItem}
-                  onChange={(e) => setSelectedItem(e.target.value)}
-                >
-                  <option value="">Select {itemType}</option>
-                  {items.map((item: any) => (
-                    <option key={item.id} value={item.id}>{item.name}</option>
-                  ))}
-                </select>
-                {errors.selectedItem && <p className="text-red-500 text-xs">{errors.selectedItem}</p>}
-              </div>
-            )}
-
+              <EditDialog {...dialogProps} />
+            ) : null}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
               <Button

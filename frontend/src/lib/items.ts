@@ -8,11 +8,16 @@ export interface CircuitBreakerItem {
   ioa_control_close: number;
   ioa_cb_status_dp?: number;
   ioa_control_dp?: number;
-  ioa_local_remote: number;
+  ioa_local_remote_sp: number;
+  ioa_local_remote_dp?: number;
   is_sbo: boolean;
-  is_double_point: boolean;
-
-  remote: number;
+  has_double_point: boolean;
+  is_dp_mode: boolean;
+  is_sdp_mode: boolean;
+  has_local_remote_dp: boolean;
+  is_local_remote_dp_mode: boolean;
+  remote_sp: number;
+  remote_dp: number;
   cb_status_open: number
   cb_status_close: number
   cb_status_dp: number
@@ -47,4 +52,23 @@ export interface TelemetryItem {
   auto_mode: boolean; // true is auto, false is manual
 }
 
-export type Item = CircuitBreakerItem | TeleSignalItem | TelemetryItem;
+export interface TapChangerItem {
+  id: string;
+  name: string;
+  ioa_value: number;
+  value: number;
+  value_high_limit: number;
+  value_low_limit: number;
+  ioa_high_limit: number;
+  ioa_low_limit: number;
+  ioa_status_raise_lower: number;
+  ioa_command_raise_lower: number;
+  interval: number;
+  auto_mode: boolean;
+  ioa_status_auto_manual: number;
+  ioa_command_auto_manual: number;
+  is_local_remote: number;
+  ioa_local_remote: number;
+}
+
+export type Item = CircuitBreakerItem | TeleSignalItem | TelemetryItem | TapChangerItem;

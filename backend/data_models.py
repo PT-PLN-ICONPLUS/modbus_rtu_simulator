@@ -5,17 +5,27 @@ class CircuitBreakerItem(BaseModel):
     id: str
     name: str
     
-    ioa_cb_status: int           # CB Status Single Open (Discrete Input)
-    ioa_cb_status_close: int     # CB Status Single Close (Discrete Input)
-    ioa_cb_status_dp: Optional[int] = None  # CB Status Double (Input Register)
-    ioa_control_open: int        # Control Open (Coil)
-    ioa_control_close: int       # Control Close (Coil)  
-    ioa_control_dp: Optional[int] = None  # Control Double (Holding Register)
-    ioa_local_remote: int        # Local/Remote Position (Coil)
-    is_sbo: bool
-    is_double_point: bool
+    ioa_cb_status: int           # CB Status Single Open
+    ioa_cb_status_close: int     # CB Status Single Close 
+    ioa_cb_status_dp: Optional[int] = None  # CB Status
+    ioa_control_open: int        # Control Open 
+    ioa_control_close: int       # Control Close
+    ioa_control_dp: Optional[int] = None  # Control Double 
+    ioa_local_remote_sp: int        # Local/Remote Position 
+    ioa_local_remote_dp: int  # Local/Remote Double
     
-    remote: int = 0
+    is_sbo: bool
+    
+    has_double_point: bool
+    
+    is_dp_mode: Optional[bool] = False
+    is_sdp_mode: Optional[bool] = False
+    
+    has_local_remote_dp: Optional[bool] = True
+    is_local_remote_dp_mode: Optional[bool] = False
+    
+    remote_sp: int = 0
+    remote_dp: int = 0
     cb_status_open: int = 0
     cb_status_close: int = 0
     cb_status_dp: int = 0
@@ -41,12 +51,36 @@ class TelemetryItem(BaseModel):
     min_value: float
     max_value: float
     interval: int = 2
-    auto_mode: bool = True    
+    auto_mode: bool = True
+    
+class TapChangerItem(BaseModel):
+    id: str
+    name: str
+    ioa_value: int
+    value: int
+    
+    value_high_limit: int
+    value_low_limit: int
+
+    ioa_high_limit: int
+    ioa_low_limit: int
+    
+    ioa_status_raise_lower: int  # 1: lower, 2: raise, 0: neutral
+    ioa_command_raise_lower: int
+    
+    interval: int = 1
+    auto_mode: int = 2  # 1: manual, 2: auto
+    ioa_status_auto_manual: int
+    ioa_command_auto_manual: int
+    
+    is_local_remote: int
+    ioa_local_remote: int    
 
 
     # Export all classes
     __all__ = [
       'CircuitBreakerItem',
       'TeleSignalItem',
-      'TelemetryItem'
+      'TelemetryItem',
+      'TapChangerItem'
     ]

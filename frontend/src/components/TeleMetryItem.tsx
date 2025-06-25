@@ -36,7 +36,7 @@ function Telemetry(item: TelemetryItem & {
 
       // Ensure the value is a precise multiple of the item.scale_factor
       const precision = item.scale_factor >= 1 ? 0 : -Math.floor(Math.log10(item.scale_factor));
-      newValue = parseFloat((Math.round(newValue / item.scale_factor) * item.scale_factor).toFixed(precision));
+      newValue = Number((Math.round(newValue / item.scale_factor) * item.scale_factor).toFixed(precision));
 
       // Ensure we don't exceed max value
       newValue = Math.min(newValue, item.max_value);
@@ -59,7 +59,7 @@ function Telemetry(item: TelemetryItem & {
 
       // Ensure the value is a precise multiple of the item.scale_factor
       const precision = item.scale_factor >= 1 ? 0 : -Math.floor(Math.log10(item.scale_factor));
-      newValue = parseFloat((Math.round(newValue / item.scale_factor) * item.scale_factor).toFixed(precision));
+      newValue = Number((Math.round(newValue / item.scale_factor) * item.scale_factor).toFixed(precision));
 
       // Ensure we don't go below min value
       newValue = Math.max(newValue, item.min_value);
@@ -92,9 +92,7 @@ function Telemetry(item: TelemetryItem & {
       <p className="font-bold w-1/3">{item.name}</p>
       <div className="flex flex-col w-1/3">
         <p className="text-2xl font-bold">
-          {value.toFixed(
-            item.scale_factor >= 1 ? 0 : -Math.floor(Math.log10(item.scale_factor))
-          )} {item.unit}
+          {value} {item.unit}
         </p>
         <p className="text-sm">IOA: {item.ioa}</p>
       </div>
